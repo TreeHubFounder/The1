@@ -1,0 +1,5278 @@
+// TreeHub - Comprehensive Tree Care Industry Platform
+// Database Schema for Professional Networking & Marketplace
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/treehub/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MANAGEMENT & AUTHENTICATION
+// ============================================================================
+
+enum UserRole {
+  PROFESSIONAL
+  COMPANY
+  HOMEOWNER
+  ADMIN
+  VENDOR
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+  INACTIVE
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  password          String
+  role              UserRole
+  status            UserStatus        @default(PENDING_VERIFICATION)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  
+  // Profile Information
+  firstName         String?
+  lastName          String?
+  companyName       String?
+  phone             String?
+  avatar            String?
+  bio               String?
+  website           String?
+  
+  // Location Data
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  latitude          Float?
+  longitude         Float?
+  serviceRadius     Int?              // miles
+  
+  // Business Information
+  businessLicense   String?
+  taxId             String?
+  yearsExperience   Int?
+  teamSize          Int?
+  
+  // Platform Settings
+  emailNotifications Boolean          @default(true)
+  smsNotifications  Boolean          @default(false)
+  emergencyAlerts   Boolean          @default(true)
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastLoginAt       DateTime?
+  emailVerifiedAt   DateTime?
+  
+  // Relations
+  professionalProfile ProfessionalProfile?
+  companyProfile      CompanyProfile?
+  
+  // User Activities
+  jobsPosted        Job[]             @relation("JobPoster")
+  bids              Bid[]
+  reviews           Review[]          @relation("ReviewAuthor")
+  reviewsReceived   Review[]          @relation("ReviewTarget")
+  messages          Message[]
+  equipmentListings Equipment[]
+  transactions      Transaction[]
+  alertsCreated     EmergencyAlert[]
+  certifications    Certification[]
+  insurancePolicies Insurance[]
+  
+  // AI Relations
+  aiSubscription    AISubscription?
+  jobMatches        JobMatch[]        @relation("JobMatchContractor")
+  assignedLeads     LeadGeneration[]
+  revenueTracking   RevenueTracking[]
+  
+  // Authentication
+  accounts          Account[]
+  sessions          Session[]
+  
+  // Market Conquest Relations
+  territoryAssignments TerritoryAssignment[]
+  tierStatus        ProfessionalTierStatus?
+  competitorAnalyses CompetitorAnalysis[]
+  partnershipActivities PartnershipActivity[]
+  protectedTerritories Territory[] @relation("ProtectedBy")
+  
+  // Customer Service & Support Relations
+  customerTickets   SupportTicket[]   @relation("CustomerTickets")
+  assignedTickets   SupportTicket[]   @relation("AssignedTickets")
+  escalatedTickets  SupportTicket[]   @relation("EscalatedTickets")
+  supportStaffUser  SupportStaff?     @relation("SupportStaffUser")
+  chatCustomerSessions LiveChatSession[] @relation("ChatCustomer")
+  chatAgentSessions LiveChatSession[] @relation("ChatAgent")
+  chatMessagesSent  ChatMessage[]     @relation("ChatMessageSender")
+  ticketResponses   TicketResponse[]  @relation("TicketResponses")
+  escalationsFrom   TicketEscalation[] @relation("EscalationsFrom")
+  escalationsTo     TicketEscalation[] @relation("EscalationsTo")
+  
+  // HR Management Relations
+  employeeUser      Employee?         @relation("EmployeeUser")
+  hrRecordsCreated  HRRecord[]        @relation("HRRecordCreator")
+  performanceReviews PerformanceReview[] @relation("PerformanceReviewer")
+  
+  // Business Intelligence Relations
+  reportsCreated    BusinessIntelligenceReport[] @relation("ReportCreator")
+  
+  // Equipment & Partnership Relations
+  equipmentOrders   EquipmentOrder[]  @relation("EquipmentOrderer")
+  insuranceClaims   InsuranceClaim[]  @relation("InsuranceClaimant")
+  
+  // Cash Flow Relations
+  delayedPayments   PaymentDelay[]    @relation("DelayedPayments")
+  
+  // Investment Relations
+  investorInteractionsRecorded InvestorInteraction[] @relation("InvestorInteractionRecorder")
+  
+  // Financial Controls Relations
+  taxDocumentsReceived TaxDocument[]  @relation("TaxDocumentRecipient")
+  complianceAssignments ComplianceRecord[] @relation("ComplianceAssignee")
+  fraudAlerts       FraudDetection[]  @relation("FraudAlerts")
+  fraudInvestigations FraudDetection[] @relation("FraudInvestigator")
+  disputeCustomer   PaymentDispute[]  @relation("DisputeCustomer")
+  
+  // Brand & Trust Relations
+  certificationHoldings SafetyCertificationTracking[] @relation("CertificationHolder")
+  trustScore        TrustScore?       @relation("TrustScore")
+  businessReviews   OnlineReview[]    @relation("BusinessReviews")
+  crisisManagement  CrisisManagement[] @relation("CrisisManager")
+  
+  // Customer Acquisition Relations
+  acquisitionCustomer CustomerAcquisition? @relation("AcquisitionCustomer")
+  customerLtv       CustomerLifetimeValue? @relation("CustomerLTV")
+  referrals         ReferralTracking[] @relation("Referrer")
+  referees          ReferralTracking[] @relation("Referee")
+  
+  // Legal & Safety Relations
+  contractsManaged  LegalContract[]   @relation("ContractManager")
+  incidentsInjured  SafetyIncident[]  @relation("IncidentInjured")
+  incidentsInvestigated SafetyIncident[] @relation("IncidentInvestigator")
+  incidentsReported SafetyIncident[]  @relation("IncidentReporter")
+  protocolTraining  ProtocolTraining[] @relation("ProtocolTrainee")
+  complianceManagement LegalCompliance[] @relation("ComplianceManager")
+  insuranceVerifications InsuranceVerification[] @relation("InsuranceVerifications")
+  
+  // Implementation Timeline Relations
+  taskAssignments   ImplementationTask[] @relation("TaskAssignee")
+  
+  @@map("users")
+}
+
+model ProfessionalProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Professional Details
+  title           String?   // "Certified Arborist", "Tree Climber", etc.
+  specializations String[]  // ["Tree Removal", "Pruning", "Stump Grinding"]
+  hourlyRate      Decimal?
+  availability    String?   // "Full-time", "Part-time", "Weekends"
+  equipmentOwned  String[]  // Equipment they own/operate
+  
+  // Verification & Trust
+  isaCertified    Boolean   @default(false)
+  isVerified      Boolean   @default(false)
+  backgroundCheck Boolean   @default(false)
+  
+  // Performance Metrics
+  completedJobs   Int       @default(0)
+  averageRating   Decimal?  @default(0)
+  responseTime    Int?      // minutes
+  reliabilityScore Decimal? @default(0)
+  
+  // Portfolio
+  portfolioImages String[]
+  portfolioVideos String[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("professional_profiles")
+}
+
+model CompanyProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Company Information
+  legalName         String?
+  dbaName           String?
+  foundedYear       Int?
+  employeeCount     Int?
+  serviceAreas      String[]  // Geographic service areas
+  
+  // Business Verification
+  licenseNumber     String?
+  bondedAmount      Decimal?
+  workerCompCoverage Decimal?
+  
+  // Capabilities
+  serviceTypes      String[]  // ["Emergency Response", "Commercial", "Residential"]
+  equipmentInventory String[] // Major equipment owned
+  crewSize          Int?
+  
+  // Business Metrics
+  averageJobSize    Decimal?
+  completedProjects Int       @default(0)
+  averageRating     Decimal?  @default(0)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("company_profiles")
+}
+
+// ============================================================================
+// JOB MANAGEMENT & MARKETPLACE
+// ============================================================================
+
+enum JobType {
+  TREE_REMOVAL
+  TREE_PRUNING
+  STUMP_GRINDING
+  EMERGENCY_RESPONSE
+  STORM_CLEANUP
+  TREE_PLANTING
+  TREE_HEALTH_ASSESSMENT
+  CRANE_SERVICE
+  LOT_CLEARING
+  COMMERCIAL_MAINTENANCE
+}
+
+enum JobStatus {
+  DRAFT
+  POSTED
+  BIDDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum JobPriority {
+  LOW
+  NORMAL
+  HIGH
+  EMERGENCY
+}
+
+enum JobUrgency {
+  FLEXIBLE
+  WITHIN_WEEK
+  WITHIN_DAYS
+  URGENT
+  EMERGENCY
+}
+
+model Job {
+  id              String        @id @default(cuid())
+  title           String
+  description     String
+  jobType         JobType
+  status          JobStatus     @default(DRAFT)
+  priority        JobPriority   @default(NORMAL)
+  urgency         JobUrgency    @default(FLEXIBLE)
+  
+  // Job Details
+  estimatedHours  Int?
+  budgetMin       Decimal?
+  budgetMax       Decimal?
+  budgetFlexible  Boolean       @default(false)
+  
+  // Location
+  address         String
+  city            String
+  state           String
+  zipCode         String
+  latitude        Float?
+  longitude       Float?
+  accessNotes     String?       // "Backyard access", "Power lines nearby"
+  
+  // Requirements
+  requiredCertifications String[]
+  requiredEquipment      String[]
+  requiredExperience     Int?      // minimum years
+  physicalRequirements   String?   // "Heavy lifting", "Heights"
+  
+  // Timeline
+  preferredStartDate DateTime?
+  deadline           DateTime?
+  estimatedDuration  Int?       // days
+  
+  // Media
+  images             String[]
+  videos             String[]
+  documents          String[]
+  
+  // Emergency/Weather Related
+  isEmergency        Boolean    @default(false)
+  weatherDependent   Boolean    @default(false)
+  hazardLevel        String?    // "Low", "Medium", "High"
+  emergencyContactInfo String?
+  
+  // Relations
+  posterId           String
+  poster             User       @relation("JobPoster", fields: [posterId], references: [id])
+  assignedToId       String?
+  bids               Bid[]
+  messages           Message[]
+  reviews            Review[]
+  transactions       Transaction[]
+  
+  // AI Relations
+  jobMatches         JobMatch[]
+  leadGeneration     LeadGeneration[]
+  
+  // Operational Infrastructure Relations
+  supportTickets     SupportTicket[]
+  cashFlowEntries    CashFlowEntry[]  @relation("CashFlowJob")
+  paymentDelays      PaymentDelay[]   @relation("DelayedJobPayment")
+  insuranceClaims    InsuranceClaim[]
+  paymentDisputes    PaymentDispute[] @relation("DisputedJob")
+  onlineReviews      OnlineReview[]   @relation("JobReviews")
+  crisisEvents       CrisisManagement[] @relation("CrisisJob")
+  referredJobs       ReferralTracking[] @relation("ReferredJob")
+  contractJobs       LegalContract[]  @relation("ContractJob")
+  safetyIncidents    SafetyIncident[] @relation("IncidentJob")
+  
+  // Tracking
+  viewCount          Int        @default(0)
+  bidCount           Int        @default(0)
+  
+  // Timestamps
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  postedAt           DateTime?
+  assignedAt         DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  
+  @@map("jobs")
+}
+
+model Bid {
+  id              String    @id @default(cuid())
+  amount          Decimal
+  estimatedHours  Int?
+  proposedStartDate DateTime?
+  proposedEndDate   DateTime?
+  message         String?
+  
+  // Additional Offer Details
+  includesCleanup Boolean   @default(true)
+  includesPermits Boolean   @default(false)
+  warrantyPeriod  Int?      // days
+  paymentTerms    String?
+  
+  // Status
+  status          String    @default("pending") // pending, accepted, rejected, withdrawn
+  isCounterOffer  Boolean   @default(false)
+  
+  // Relations
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  bidderId        String
+  bidder          User      @relation(fields: [bidderId], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  acceptedAt      DateTime?
+  
+  @@unique([jobId, bidderId]) // One bid per user per job
+  @@map("bids")
+}
+
+// ============================================================================
+// EQUIPMENT MARKETPLACE
+// ============================================================================
+
+enum EquipmentCategory {
+  CHAINSAWS
+  CHIPPERS
+  STUMP_GRINDERS
+  CRANES
+  BUCKET_TRUCKS
+  CLIMBING_GEAR
+  SAFETY_EQUIPMENT
+  HAND_TOOLS
+  TRAILERS
+  TRUCKS
+  OTHER
+}
+
+enum EquipmentCondition {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  FOR_PARTS
+}
+
+enum ListingType {
+  SALE
+  RENT
+  AUCTION
+  WANTED
+}
+
+enum ListingStatus {
+  ACTIVE
+  PENDING
+  SOLD
+  RENTED
+  EXPIRED
+  CANCELLED
+}
+
+model Equipment {
+  id              String             @id @default(cuid())
+  title           String
+  description     String
+  category        EquipmentCategory
+  condition       EquipmentCondition
+  listingType     ListingType
+  status          ListingStatus      @default(ACTIVE)
+  
+  // Equipment Details
+  make            String?
+  model           String?
+  year            Int?
+  serialNumber    String?
+  hoursUsed       Int?
+  
+  // Pricing
+  salePrice       Decimal?
+  rentalPriceDaily Decimal?
+  rentalPriceWeekly Decimal?
+  rentalPriceMonthly Decimal?
+  auctionStartPrice Decimal?
+  reservePrice    Decimal?
+  
+  // Specifications
+  specifications  Json?              // Flexible specs storage
+  weight          Decimal?
+  dimensions      String?
+  powerSource     String?            // "Gas", "Electric", "Hydraulic"
+  
+  // Location & Logistics
+  location        String
+  city            String
+  state           String
+  zipCode         String
+  deliveryAvailable Boolean         @default(false)
+  deliveryRadius  Int?               // miles
+  deliveryCost    Decimal?
+  
+  // Media
+  images          String[]
+  videos          String[]
+  manuals         String[]
+  
+  // Rental Specific
+  minRentalPeriod Int?               // days
+  maxRentalPeriod Int?               // days
+  securityDeposit Decimal?
+  rentalTerms     String?
+  
+  // Auction Specific
+  auctionEndDate  DateTime?
+  highestBid      Decimal?
+  bidIncrement    Decimal?
+  
+  // Relations
+  ownerId         String
+  owner           User               @relation(fields: [ownerId], references: [id])
+  transactions    Transaction[]
+  
+  // AI Relations
+  intelligence    EquipmentIntelligence?
+  
+  // Operational Infrastructure Relations
+  supportTickets  SupportTicket[]
+  
+  // Tracking
+  viewCount       Int                @default(0)
+  inquiryCount    Int                @default(0)
+  
+  // Timestamps
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  soldAt          DateTime?
+  
+  @@map("equipment")
+}
+
+// ============================================================================
+// COMMUNICATION SYSTEM
+// ============================================================================
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  SYSTEM
+  QUOTE_REQUEST
+  QUOTE_RESPONSE
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  content         String
+  messageType     MessageType @default(TEXT)
+  attachments     String[]    // File URLs
+  
+  // Relations
+  senderId        String
+  sender          User        @relation(fields: [senderId], references: [id])
+  jobId           String?
+  job             Job?        @relation(fields: [jobId], references: [id])
+  
+  // Message Threading
+  threadId        String?     // For grouping related messages
+  replyToId       String?     // For direct replies
+  
+  // Status
+  isRead          Boolean     @default(false)
+  readAt          DateTime?
+  
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@map("messages")
+}
+
+// ============================================================================
+// REVIEWS & RATINGS SYSTEM
+// ============================================================================
+
+enum ReviewType {
+  JOB_COMPLETION
+  EQUIPMENT_PURCHASE
+  EQUIPMENT_RENTAL
+  GENERAL_SERVICE
+}
+
+model Review {
+  id              String     @id @default(cuid())
+  rating          Int        // 1-5 stars
+  title           String?
+  content         String
+  reviewType      ReviewType
+  
+  // Detailed Ratings
+  qualityRating   Int?       // 1-5
+  timelinessRating Int?      // 1-5
+  communicationRating Int?   // 1-5
+  valueRating     Int?       // 1-5
+  
+  // Media
+  images          String[]
+  videos          String[]
+  
+  // Relations
+  authorId        String
+  author          User       @relation("ReviewAuthor", fields: [authorId], references: [id])
+  targetId        String
+  target          User       @relation("ReviewTarget", fields: [targetId], references: [id])
+  jobId           String?
+  job             Job?       @relation(fields: [jobId], references: [id])
+  
+  // Moderation
+  isVerified      Boolean    @default(false)
+  isModerated     Boolean    @default(false)
+  moderationNotes String?
+  
+  // Response
+  response        String?    // Target user's response
+  responseDate    DateTime?
+  
+  // Timestamps
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@map("reviews")
+}
+
+// ============================================================================
+// PAYMENT & FINANCIAL SYSTEM
+// ============================================================================
+
+enum TransactionType {
+  JOB_PAYMENT
+  EQUIPMENT_PURCHASE
+  EQUIPMENT_RENTAL
+  SUBSCRIPTION_FEE
+  PLATFORM_FEE
+  ESCROW_DEPOSIT
+  ESCROW_RELEASE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  DISPUTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  PAYPAL
+  CHECK
+  CASH
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  amount          Decimal
+  transactionType TransactionType
+  status          TransactionStatus @default(PENDING)
+  paymentMethod   PaymentMethod
+  
+  // External References
+  stripePaymentIntentId String?
+  stripeTransferId      String?
+  
+  // Transaction Details
+  description     String
+  platformFee     Decimal?          @default(0)
+  processingFee   Decimal?          @default(0)
+  
+  // Relations
+  payerId         String
+  payer           User              @relation(fields: [payerId], references: [id])
+  jobId           String?
+  job             Job?              @relation(fields: [jobId], references: [id])
+  equipmentId     String?
+  equipment       Equipment?        @relation(fields: [equipmentId], references: [id])
+  
+  // AI Relations
+  revenueTracking RevenueTracking[]
+  
+  // Operational Infrastructure Relations
+  supportTickets  SupportTicket[]
+  cashFlowEntries CashFlowEntry[]   @relation("CashFlowTransaction")
+  paymentDelays   PaymentDelay[]    @relation("DelayedTransaction")
+  fraudDetection  FraudDetection[]  @relation("FraudTransaction")
+  paymentDisputes PaymentDispute[]  @relation("DisputedTransaction")
+  
+  // Escrow Information
+  isEscrow        Boolean           @default(false)
+  escrowReleasedAt DateTime?
+  escrowAgent     String?
+  
+  // Dispute Information
+  disputeReason   String?
+  disputeResolvedAt DateTime?
+  
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  completedAt     DateTime?
+  
+  @@map("transactions")
+}
+
+// ============================================================================
+// EMERGENCY & ALERT SYSTEM
+// ============================================================================
+
+enum AlertType {
+  STORM_WARNING
+  EMERGENCY_JOB
+  SAFETY_ALERT
+  SYSTEM_MAINTENANCE
+  PLATFORM_UPDATE
+}
+
+enum AlertPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+  EXPIRED
+}
+
+model EmergencyAlert {
+  id              String        @id @default(cuid())
+  title           String
+  message         String
+  alertType       AlertType
+  priority        AlertPriority
+  status          AlertStatus   @default(ACTIVE)
+  
+  // Geographic Targeting
+  affectedStates  String[]
+  affectedCities  String[]
+  affectedZipCodes String[]
+  radius          Int?          // miles from a central point
+  centerLatitude  Float?
+  centerLongitude Float?
+  
+  // Weather Data
+  weatherConditions String?     // "High winds", "Heavy snow"
+  windSpeed       Int?          // mph
+  precipitation   String?
+  temperature     Int?          // fahrenheit
+  
+  // Response Information
+  estimatedJobVolume Int?       // expected number of jobs
+  responseDeadline   DateTime?
+  specialInstructions String?
+  emergencyContacts  Json?
+  
+  // Relations
+  createdById     String
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  
+  // Tracking
+  viewCount       Int           @default(0)
+  responseCount   Int           @default(0)
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  expiresAt       DateTime?
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  
+  @@map("emergency_alerts")
+}
+
+// ============================================================================
+// CERTIFICATION & VERIFICATION SYSTEM
+// ============================================================================
+
+enum CertificationType {
+  ISA_CERTIFIED_ARBORIST
+  ISA_TREE_WORKER_SPECIALIST
+  ISA_UTILITY_SPECIALIST
+  TCIA_ACCREDITATION
+  OSHA_SAFETY_TRAINING
+  CRANE_OPERATOR_LICENSE
+  CDL_LICENSE
+  BUSINESS_LICENSE
+  INSURANCE_CERTIFICATE
+  CUSTOM
+}
+
+model Certification {
+  id              String            @id @default(cuid())
+  name            String
+  type            CertificationType
+  issuingOrganization String
+  certificateNumber String?
+  
+  // Validity
+  issuedDate      DateTime
+  expirationDate  DateTime?
+  isValid         Boolean           @default(true)
+  
+  // Verification
+  isVerified      Boolean           @default(false)
+  verifiedAt      DateTime?
+  verifiedById    String?
+  verificationNotes String?
+  
+  // Documentation
+  certificateImage String?
+  documentUrl     String?
+  
+  // Relations
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@map("certifications")
+}
+
+// ============================================================================
+// INSURANCE SYSTEM
+// ============================================================================
+
+enum InsuranceType {
+  GENERAL_LIABILITY
+  PROFESSIONAL_LIABILITY
+  WORKERS_COMPENSATION
+  COMMERCIAL_AUTO
+  EQUIPMENT_COVERAGE
+  UMBRELLA_POLICY
+}
+
+model Insurance {
+  id              String        @id @default(cuid())
+  type            InsuranceType
+  provider        String
+  policyNumber    String
+  
+  // Coverage Details
+  coverageAmount  Decimal
+  deductible      Decimal?
+  
+  // Validity
+  effectiveDate   DateTime
+  expirationDate  DateTime
+  isActive        Boolean       @default(true)
+  
+  // Verification
+  isVerified      Boolean       @default(false)
+  verifiedAt      DateTime?
+  
+  // Documentation
+  certificateUrl  String?
+  policyDocumentUrl String?
+  
+  // Relations
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("insurance_policies")
+}
+
+// ============================================================================
+// AI-POWERED OPERATING SYSTEM
+// ============================================================================
+
+// AI Subscription Management
+enum SubscriptionTier {
+  BASIC          // $99/month
+  PREMIUM        // $299/month
+  ENTERPRISE     // $999/month
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+  TRIAL
+}
+
+model AISubscription {
+  id                String             @id @default(cuid())
+  tier              SubscriptionTier
+  status            SubscriptionStatus @default(TRIAL)
+  
+  // Pricing
+  monthlyPrice      Decimal
+  annualPrice       Decimal?
+  trialEndsAt       DateTime?
+  
+  // Features Access
+  stormResponseAgent Boolean          @default(false)
+  jobMatchingAgent  Boolean          @default(false)
+  equipmentIntelligence Boolean      @default(false)
+  weatherIntegration Boolean         @default(false)
+  advancedAnalytics Boolean          @default(false)
+  apiAccess         Boolean          @default(false)
+  
+  // Limits
+  monthlyLeadLimit  Int?
+  monthlyJobMatches Int?
+  weatherApiCalls   Int?
+  
+  // Relations
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id])
+  
+  // Billing
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("ai_subscriptions")
+}
+
+// AI Agent System
+enum AIAgentType {
+  STORM_RESPONSE
+  JOB_MATCHING
+  EQUIPMENT_INTELLIGENCE
+  WEATHER_MONITOR
+  LEAD_GENERATOR
+  CREW_OPTIMIZER
+}
+
+enum AIAgentStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+  MAINTENANCE
+  ERROR
+}
+
+model AIAgent {
+  id                String        @id @default(cuid())
+  name              String
+  type              AIAgentType
+  status            AIAgentStatus @default(ACTIVE)
+  
+  // Configuration
+  config            Json          // Agent-specific configuration
+  version           String        @default("1.0")
+  
+  // Performance Metrics
+  totalExecutions   Int           @default(0)
+  successfulExecutions Int        @default(0)
+  errorCount        Int           @default(0)
+  averageResponseTime Int?        // milliseconds
+  
+  // Resource Usage
+  lastExecutionAt   DateTime?
+  totalProcessingTime Int?        // milliseconds
+  
+  // Revenue Impact
+  revenueGenerated  Decimal       @default(0)
+  leadsGenerated    Int           @default(0)
+  jobsMatched       Int           @default(0)
+  
+  // Relations
+  agentLogs         AIAgentLog[]
+  stormResponses    StormResponse[]
+  jobMatches        JobMatch[]
+  revenueTracking   RevenueTracking[]
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("ai_agents")
+}
+
+model AIAgentLog {
+  id                String        @id @default(cuid())
+  
+  // Execution Details
+  executionId       String        @unique
+  status            String        // success, error, timeout
+  inputData         Json?
+  outputData        Json?
+  errorMessage      String?
+  processingTime    Int?          // milliseconds
+  
+  // Context
+  triggeredBy       String?       // user_id, cron, event
+  executionContext  Json?
+  
+  // Relations
+  agentId           String
+  agent             AIAgent       @relation(fields: [agentId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  
+  @@map("ai_agent_logs")
+}
+
+// Weather Intelligence System
+model WeatherData {
+  id                String        @id @default(cuid())
+  
+  // Location
+  city              String
+  state             String
+  latitude          Float
+  longitude         Float
+  
+  // Current Conditions
+  temperature       Float
+  humidity          Int
+  windSpeed         Float
+  windDirection     String
+  precipitation     Float
+  pressure          Float
+  visibility        Float
+  
+  // Weather Conditions
+  condition         String        // "Clear", "Cloudy", "Storm"
+  description       String
+  severity          String?       // "Low", "Medium", "High", "Severe"
+  
+  // Storm Specific
+  isStormCondition  Boolean       @default(false)
+  stormType         String?       // "Thunderstorm", "Hurricane", "Tornado"
+  alertLevel        String?       // "Watch", "Warning", "Emergency"
+  
+  // Data Source
+  dataSource        String        // "OpenWeatherMap", "NOAA"
+  externalId        String?
+  
+  // Relations
+  stormEvents       StormEvent[]
+  
+  // Timestamps
+  observationTime   DateTime
+  createdAt         DateTime      @default(now())
+  
+  @@map("weather_data")
+}
+
+model StormEvent {
+  id                String        @id @default(cuid())
+  
+  // Storm Details
+  name              String?       // Hurricane name, etc.
+  type              String        // "Thunderstorm", "Hurricane", "Ice Storm"
+  severity          String        // "Minor", "Moderate", "Major", "Extreme"
+  
+  // Geographic Impact
+  affectedStates    String[]
+  affectedCities    String[]
+  affectedZipCodes  String[]
+  centerLatitude    Float?
+  centerLongitude   Float?
+  impactRadius      Int?          // miles
+  
+  // Storm Characteristics
+  maxWindSpeed      Float?
+  expectedPrecipitation Float?
+  expectedDuration  Int?          // hours
+  
+  // Timing
+  startTime         DateTime
+  endTime           DateTime?
+  peakTime          DateTime?
+  
+  // Damage Assessment
+  predictedDamage   String?       // "Low", "Medium", "High"
+  actualDamage      String?
+  treeServiceDemand String?       // "Low", "Medium", "High", "Extreme"
+  
+  // Relations
+  weatherDataId     String?
+  weatherData       WeatherData?  @relation(fields: [weatherDataId], references: [id])
+  stormResponses    StormResponse[]
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("storm_events")
+}
+
+// Storm Response AI Agent
+model StormResponse {
+  id                String        @id @default(cuid())
+  
+  // Response Details
+  responseType      String        // "Automated", "Manual", "Hybrid"
+  status            String        // "Active", "Completed", "Failed"
+  
+  // Lead Generation
+  leadsGenerated    Int           @default(0)
+  contactsReached   Int           @default(0)
+  jobsCreated       Int           @default(0)
+  
+  // Crew Management
+  crewsAlerted      Int           @default(0)
+  crewsResponded    Int           @default(0)
+  equipmentStaged   String[]      // Equipment types staged
+  
+  // Revenue Tracking
+  estimatedRevenue  Decimal       @default(0)
+  actualRevenue     Decimal       @default(0)
+  leadsConverted    Int           @default(0)
+  conversionRate    Decimal       @default(0)
+  
+  // Performance Metrics
+  responseTime      Int?          // minutes from storm detection
+  effectivenessScore Decimal?     // 0-100
+  
+  // Relations
+  stormEventId      String
+  stormEvent        StormEvent    @relation(fields: [stormEventId], references: [id])
+  aiAgentId         String
+  aiAgent           AIAgent       @relation(fields: [aiAgentId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("storm_responses")
+}
+
+// Job Matching AI Agent
+model JobMatch {
+  id                String        @id @default(cuid())
+  
+  // Matching Details
+  matchScore        Decimal       // 0-100 confidence score
+  matchReason       String[]      // ["Location", "Skills", "Availability"]
+  
+  // Optimization Data
+  travelDistance    Float?        // miles
+  skillMatch        Decimal?      // 0-100
+  availabilityMatch Decimal?      // 0-100
+  priceMatch        Decimal?      // 0-100
+  
+  // Bidding Intelligence
+  suggestedBid      Decimal?
+  winProbability    Decimal?      // 0-100
+  competitorCount   Int?
+  averageMarketPrice Decimal?
+  
+  // Response Tracking
+  contractorNotified Boolean      @default(false)
+  contractorViewed  Boolean       @default(false)
+  contractorBid     Boolean       @default(false)
+  bidWon            Boolean       @default(false)
+  
+  // Relations
+  jobId             String
+  job               Job           @relation(fields: [jobId], references: [id])
+  contractorId      String
+  contractor        User          @relation("JobMatchContractor", fields: [contractorId], references: [id])
+  aiAgentId         String
+  aiAgent           AIAgent       @relation(fields: [aiAgentId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("job_matches")
+}
+
+// Equipment Intelligence System
+model EquipmentIntelligence {
+  id                String        @id @default(cuid())
+  
+  // Predictive Maintenance
+  nextMaintenanceDate DateTime?
+  maintenanceScore  Decimal?      // 0-100, lower means more urgent
+  predictedFailures String[]      // ["Engine", "Hydraulics", "Transmission"]
+  
+  // Usage Analytics
+  totalOperatingHours Int         @default(0)
+  averageDailyUsage Int?          // hours
+  peakUsagePeriods  String[]      // ["Spring", "Summer", "Fall", "Winter"]
+  
+  // Performance Metrics
+  efficiencyScore   Decimal?      // 0-100
+  downtimeHours     Int           @default(0)
+  maintenanceCost   Decimal       @default(0)
+  
+  // Market Intelligence
+  currentMarketValue Decimal?
+  demandScore       Decimal?      // 0-100
+  optimalPricing    Decimal?
+  competitorPricing Decimal?
+  
+  // Revenue Optimization
+  rentalUtilization Decimal?      // 0-100 percentage
+  suggestedRentalPrice Decimal?
+  projectedRevenue  Decimal?
+  
+  // Relations
+  equipmentId       String        @unique
+  equipment         Equipment     @relation(fields: [equipmentId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("equipment_intelligence")
+}
+
+// Lead Generation & Revenue Tracking
+model LeadGeneration {
+  id                String        @id @default(cuid())
+  
+  // Lead Source
+  source            String        // "Storm_Response", "Weather_Alert", "SEO", "Referral"
+  sourceDetails     Json?         // Additional source information
+  
+  // Lead Information
+  homeownerName     String?
+  homeownerEmail    String?
+  homeownerPhone    String?
+  propertyAddress   String
+  city              String
+  state             String
+  zipCode           String
+  
+  // Service Requirements
+  serviceType       String        // "Emergency", "Routine", "Assessment"
+  urgency           String        // "Immediate", "Within_Week", "Flexible"
+  estimatedValue    Decimal?
+  
+  // Lead Status
+  status            String        // "New", "Contacted", "Qualified", "Converted", "Lost"
+  contactAttempts   Int           @default(0)
+  lastContactDate   DateTime?
+  
+  // Conversion Tracking
+  assignedContractorId String?
+  assignedContractor   User?      @relation(fields: [assignedContractorId], references: [id])
+  jobCreated        Boolean       @default(false)
+  jobId             String?
+  job               Job?          @relation(fields: [jobId], references: [id])
+  
+  // Revenue Tracking
+  leadValue         Decimal       @default(0)
+  commissionEarned  Decimal       @default(0)
+  conversionValue   Decimal       @default(0)
+  
+  // Performance Metrics
+  timeToContact     Int?          // minutes
+  timeToConversion  Int?          // hours
+  
+  // Relations
+  generatedById     String?       // AI Agent ID
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  convertedAt       DateTime?
+  
+  @@map("lead_generation")
+}
+
+// Revenue Analytics
+model RevenueTracking {
+  id                String        @id @default(cuid())
+  
+  // Revenue Source
+  source            String        // "Subscription", "Commission", "Lead_Generation", "Equipment_Transaction"
+  sourceId          String?       // Reference to source entity
+  
+  // Revenue Details
+  amount            Decimal
+  currency          String        @default("USD")
+  revenueType       String        // "Recurring", "One_Time", "Commission"
+  
+  // Attribution
+  customerId        String?
+  customer          User?         @relation(fields: [customerId], references: [id])
+  aiAgentId         String?
+  aiAgent           AIAgent?      @relation(fields: [aiAgentId], references: [id])
+  
+  // Categorization
+  category          String        // "AI_Subscription", "Storm_Response", "Job_Matching", "Equipment_Intelligence"
+  subcategory       String?
+  
+  // Performance Metrics
+  profitMargin      Decimal?      // percentage
+  acquisitionCost   Decimal?
+  customerLifetimeValue Decimal?
+  
+  // Processing
+  processed         Boolean       @default(false)
+  processedAt       DateTime?
+  
+  // Relations
+  transactionId     String?
+  transaction       Transaction?  @relation(fields: [transactionId], references: [id])
+  
+  // Timestamps
+  revenueDate       DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("revenue_tracking")
+}
+
+// Business Intelligence & Analytics
+model BusinessMetrics {
+  id                String        @id @default(cuid())
+  
+  // Time Period
+  period            String        // "Daily", "Weekly", "Monthly", "Quarterly"
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Revenue Metrics
+  totalRevenue      Decimal       @default(0)
+  subscriptionRevenue Decimal     @default(0)
+  commissionRevenue Decimal       @default(0)
+  leadRevenue       Decimal       @default(0)
+  
+  // Usage Metrics
+  activeUsers       Int           @default(0)
+  newSignups        Int           @default(0)
+  jobsPosted        Int           @default(0)
+  jobsCompleted     Int           @default(0)
+  
+  // AI Performance
+  stormResponseExecutions Int     @default(0)
+  jobMatchingExecutions Int       @default(0)
+  leadsGenerated    Int           @default(0)
+  leadsConverted    Int           @default(0)
+  
+  // Market Metrics
+  equipmentListings Int           @default(0)
+  equipmentSales    Int           @default(0)
+  averageJobValue   Decimal       @default(0)
+  
+  // Predictive Analytics
+  projectedRevenue  Decimal?
+  marketTrends      Json?
+  recommendations   String[]
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("business_metrics")
+}
+
+// ============================================================================
+// MARKET CONQUEST SYSTEM - BUCKS COUNTY DOMINATION
+// ============================================================================
+
+// Territory Management
+enum TerritoryStatus {
+  AVAILABLE
+  PROTECTED
+  EXCLUSIVE
+  COMPETITIVE
+  SATURATED
+}
+
+enum TerritoryType {
+  ZIP_CODE
+  CITY
+  COUNTY
+  REGION
+  MUNICIPAL
+}
+
+model Territory {
+  id                String          @id @default(cuid())
+  
+  // Geographic Definition
+  name              String          // "Doylestown, PA" or "18901"
+  type              TerritoryType
+  zipCode           String?
+  city              String?
+  county            String?
+  state             String          @default("PA")
+  
+  // Market Data
+  population        Int?
+  households        Int?
+  medianIncome      Decimal?
+  treeCanopyCoverage Decimal?      // percentage
+  
+  // Territory Status
+  status            TerritoryStatus @default(AVAILABLE)
+  isProtected       Boolean        @default(false)
+  exclusiveUntil    DateTime?
+  
+  // Performance Metrics
+  totalJobs         Int            @default(0)
+  totalRevenue      Decimal        @default(0)
+  marketPenetration Decimal        @default(0) // percentage
+  competitorCount   Int            @default(0)
+  
+  // Opportunity Assessment
+  opportunityScore  Decimal?       // 0-100
+  stormRisk         String?        // "Low", "Medium", "High"
+  seasonalDemand    Json?          // Demand by season
+  
+  // Protection & Exclusivity
+  protectedById     String?
+  protectedBy       User?          @relation("ProtectedBy", fields: [protectedById], references: [id])
+  protectionStartDate DateTime?
+  exclusivityFee    Decimal?
+  
+  // Relations
+  territoryAssignments TerritoryAssignment[]
+  competitors       Competitor[]
+  propertyManagers  PropertyManagerTerritory[]
+  
+  // Timestamps
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@unique([zipCode, state])
+  @@map("territories")
+}
+
+model TerritoryAssignment {
+  id                String          @id @default(cuid())
+  
+  // Assignment Details
+  assignmentType    String          // "Primary", "Secondary", "Emergency_Only"
+  priority          Int             @default(1) // 1 = highest priority
+  
+  // Performance Requirements
+  minResponseTime   Int?            // minutes
+  minJobsPerMonth   Int?
+  minRevenuePerMonth Decimal?
+  
+  // Performance Tracking
+  actualResponseTime Int?           // minutes average
+  jobsCompletedThisMonth Int       @default(0)
+  revenueThisMonth  Decimal        @default(0)
+  satisfactionScore Decimal?       // 0-100
+  
+  // Relations
+  territoryId       String
+  territory         Territory      @relation(fields: [territoryId], references: [id])
+  professionalId    String
+  professional      User           @relation(fields: [professionalId], references: [id])
+  
+  // Status
+  isActive          Boolean        @default(true)
+  suspendedUntil    DateTime?
+  suspensionReason  String?
+  
+  // Timestamps
+  assignedAt        DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@unique([territoryId, professionalId])
+  @@map("territory_assignments")
+}
+
+// Professional Tier System (Gold/Platinum/Elite)
+enum ProfessionalTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  ELITE
+}
+
+enum TierStatus {
+  ACTIVE
+  PROBATION
+  SUSPENDED
+  DEMOTED
+  PROMOTED
+}
+
+model ProfessionalTierStatus {
+  id                String           @id @default(cuid())
+  
+  // Tier Information
+  currentTier       ProfessionalTier
+  previousTier      ProfessionalTier?
+  status            TierStatus       @default(ACTIVE)
+  
+  // Tier Benefits
+  territoryProtection Boolean        @default(false)
+  exclusiveZipCodes   String[]       // Protected zip codes
+  commissionBonus     Decimal        @default(0) // percentage
+  priorityAlerts      Boolean        @default(false)
+  advancedAnalytics   Boolean        @default(false)
+  
+  // Performance Requirements
+  minMonthlyJobs      Int?
+  minMonthlyRevenue   Decimal?
+  minRating           Decimal?
+  maxComplaintRatio   Decimal?
+  
+  // Achievement Tracking
+  monthsInTier        Int            @default(0)
+  tierPoints          Int            @default(0)
+  achievementBadges   String[]
+  
+  // Performance Metrics
+  monthlyJobsCompleted Int          @default(0)
+  monthlyRevenue      Decimal        @default(0)
+  averageRating       Decimal        @default(0)
+  customerComplaints  Int            @default(0)
+  
+  // Tier Advancement
+  eligibleForPromotion Boolean       @default(false)
+  promotionEligibleDate DateTime?
+  nextTierRequirements Json?
+  
+  // Relations
+  professionalId      String         @unique
+  professional        User           @relation(fields: [professionalId], references: [id])
+  
+  // Timestamps
+  tierAchievedAt      DateTime       @default(now())
+  lastReviewedAt      DateTime       @default(now())
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  
+  @@map("professional_tier_status")
+}
+
+// Competitor Intelligence
+enum CompetitorType {
+  DIRECT
+  INDIRECT
+  NATIONAL_CHAIN
+  LOCAL_COMPANY
+  FRANCHISE
+  INDIVIDUAL
+}
+
+enum CompetitorThreatLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Competitor {
+  id                String             @id @default(cuid())
+  
+  // Basic Information
+  name              String
+  type              CompetitorType
+  website           String?
+  phone             String?
+  email             String?
+  
+  // Location & Service Area
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  serviceRadius     Int?               // miles
+  serviceAreas      String[]           // Geographic areas served
+  
+  // Business Intelligence
+  estimatedRevenue  Decimal?
+  employeeCount     Int?
+  yearsInBusiness   Int?
+  marketShare       Decimal?           // percentage in their areas
+  
+  // Service Analysis
+  serviceTypes      String[]
+  pricing           Json?              // Service pricing data
+  responseTime      Int?               // minutes
+  averageRating     Decimal?
+  
+  // Competitive Analysis
+  threatLevel       CompetitorThreatLevel
+  strengths         String[]
+  weaknesses        String[]
+  opportunities     String[]           // Ways to compete
+  
+  // Performance Tracking
+  jobsWonAgainst    Int               @default(0)
+  jobsLostTo        Int               @default(0)
+  averageBidGap     Decimal?          // Our price vs their price
+  
+  // Intelligence Data
+  lastUpdated       DateTime          @default(now())
+  dataSource        String?           // "Web_Scraping", "Manual", "Customer_Report"
+  notes             String?
+  
+  // Relations
+  territoryId       String?
+  territory         Territory?        @relation(fields: [territoryId], references: [id])
+  competitorAnalysis CompetitorAnalysis[]
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("competitors")
+}
+
+model CompetitorAnalysis {
+  id                String            @id @default(cuid())
+  
+  // Analysis Details
+  analysisType      String            // "Pricing", "Service_Quality", "Market_Share", "Customer_Satisfaction"
+  findings          Json              // Structured analysis data
+  recommendations   String[]
+  
+  // Competitive Positioning
+  ourAdvantages     String[]
+  theirAdvantages   String[]
+  neutralFactors    String[]
+  
+  // Action Items
+  actionItems       String[]
+  priority          String            // "Low", "Medium", "High", "Critical"
+  assignedTo        String?
+  dueDate           DateTime?
+  
+  // Results Tracking
+  implemented       Boolean           @default(false)
+  implementedAt     DateTime?
+  resultsObserved   String?
+  impactMeasured    Decimal?
+  
+  // Relations
+  competitorId      String
+  competitor        Competitor        @relation(fields: [competitorId], references: [id])
+  analyzedById      String?
+  analyzedBy        User?             @relation(fields: [analyzedById], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("competitor_analysis")
+}
+
+// Property Management Integration
+enum PropertyManagerType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED_USE
+  HOA
+  GOVERNMENT
+  INSTITUTIONAL
+}
+
+enum ContractStatus {
+  PROSPECT
+  NEGOTIATING
+  ACTIVE
+  RENEWAL_DUE
+  EXPIRED
+  CANCELLED
+  TERMINATED
+}
+
+model PropertyManager {
+  id                String              @id @default(cuid())
+  
+  // Company Information
+  companyName       String
+  contactName       String?
+  contactTitle      String?
+  phone             String?
+  email             String?
+  website           String?
+  
+  // Business Details
+  type              PropertyManagerType
+  propertiesManaged Int?
+  totalUnits        Int?
+  portfolioValue    Decimal?
+  
+  // Location & Service Area
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  serviceAreas      String[]
+  
+  // Contract Information
+  contractStatus    ContractStatus      @default(PROSPECT)
+  contractValue     Decimal?
+  discountOffered   Decimal?            // percentage
+  exclusivityClaimed Boolean           @default(false)
+  
+  // Performance Metrics
+  jobsGenerated     Int                @default(0)
+  totalRevenue      Decimal            @default(0)
+  averageJobValue   Decimal?
+  paymentTerms      String?
+  
+  // Relationship Management
+  lastContactDate   DateTime?
+  nextFollowUpDate  DateTime?
+  relationshipScore Decimal?           // 0-100
+  satisfactionLevel String?            // "Low", "Medium", "High"
+  
+  // Intelligence Data
+  currentVendors    String[]           // Current tree service providers
+  painPoints        String[]
+  budgetCycle       String?            // "Calendar_Year", "Fiscal_Year", "Quarterly"
+  decisionMakers    Json?              // Contact information for decision makers
+  
+  // Relations
+  territories       PropertyManagerTerritory[]
+  contracts         PropertyManagerContract[]
+  
+  // Timestamps
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("property_managers")
+}
+
+model PropertyManagerTerritory {
+  id                String            @id @default(cuid())
+  
+  // Coverage Details
+  primaryContact    Boolean           @default(false)
+  serviceLevel      String            // "Basic", "Premium", "Emergency_Only"
+  responseTimeRequirement Int?        // minutes
+  
+  // Performance Tracking
+  jobsCompleted     Int               @default(0)
+  averageResponseTime Int?            // minutes
+  satisfactionScore Decimal?          // 0-100
+  issuesReported    Int               @default(0)
+  
+  // Relations
+  propertyManagerId String
+  propertyManager   PropertyManager   @relation(fields: [propertyManagerId], references: [id])
+  territoryId       String
+  territory         Territory         @relation(fields: [territoryId], references: [id])
+  
+  // Status
+  isActive          Boolean           @default(true)
+  startDate         DateTime          @default(now())
+  endDate           DateTime?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@unique([propertyManagerId, territoryId])
+  @@map("property_manager_territories")
+}
+
+model PropertyManagerContract {
+  id                String              @id @default(cuid())
+  
+  // Contract Details
+  contractNumber    String              @unique
+  contractType      String              // "Master_Service", "Emergency_Only", "Seasonal"
+  status            ContractStatus
+  
+  // Financial Terms
+  baseRate          Decimal?
+  volumeDiscount    Decimal?            // percentage
+  emergencyRate     Decimal?
+  minimumMonthly    Decimal?
+  paymentTerms      String?             // "Net_30", "Net_60", etc.
+  
+  // Service Level Agreement
+  standardResponseTime Int?             // minutes
+  emergencyResponseTime Int?            // minutes
+  serviceTypes      String[]
+  exclusions        String[]
+  
+  // Contract Timeline
+  startDate         DateTime
+  endDate           DateTime
+  renewalDate       DateTime?
+  autoRenewal       Boolean            @default(false)
+  noticePeriod      Int?               // days for termination notice
+  
+  // Performance Metrics
+  contractValue     Decimal            @default(0)
+  actualRevenue     Decimal            @default(0)
+  profitMargin      Decimal?           // percentage
+  
+  // Relations
+  propertyManagerId String
+  propertyManager   PropertyManager    @relation(fields: [propertyManagerId], references: [id])
+  
+  // Timestamps
+  signedAt          DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("property_manager_contracts")
+}
+
+// Strategic Partnership Management
+enum PartnershipType {
+  INSURANCE_COMPANY
+  MUNICIPAL_CONTRACT
+  FRANCHISE_PARTNER
+  EQUIPMENT_SUPPLIER
+  TECHNOLOGY_VENDOR
+  MARKETING_AGENCY
+  FINANCIAL_INSTITUTION
+}
+
+enum PartnershipStatus {
+  PROSPECT
+  NEGOTIATING
+  ACTIVE
+  PAUSED
+  TERMINATED
+  EXPIRED
+}
+
+model StrategicPartnership {
+  id                String             @id @default(cuid())
+  
+  // Partner Information
+  partnerName       String
+  partnerType       PartnershipType
+  contactName       String?
+  contactTitle      String?
+  phone             String?
+  email             String?
+  website           String?
+  
+  // Partnership Details
+  status            PartnershipStatus   @default(PROSPECT)
+  partnershipLevel  String?            // "Preferred", "Exclusive", "Strategic"
+  
+  // Financial Terms
+  revenueShare      Decimal?           // percentage
+  referralFee       Decimal?
+  minimumCommitment Decimal?
+  exclusivityFee    Decimal?
+  
+  // Performance Metrics
+  leadsGenerated    Int                @default(0)
+  revenueGenerated  Decimal            @default(0)
+  costSavings       Decimal            @default(0)
+  mutualBenefit     Decimal            @default(0)
+  
+  // Partnership Scope
+  serviceAreas      String[]
+  serviceTypes      String[]
+  targetMarkets     String[]
+  exclusivityRegions String[]
+  
+  // Relationship Management
+  relationshipScore Decimal?           // 0-100
+  lastMeetingDate   DateTime?
+  nextReviewDate    DateTime?
+  keySuccesses      String[]
+  challengesFaced   String[]
+  
+  // Contract Terms
+  contractStartDate DateTime?
+  contractEndDate   DateTime?
+  renewalTerms      String?
+  terminationClause String?
+  
+  // Strategic Value
+  strategicImportance String           // "Low", "Medium", "High", "Critical"
+  competitiveAdvantage String[]
+  marketAccess      String[]
+  resourceSharing   String[]
+  
+  // Relations
+  partnershipActivities PartnershipActivity[]
+  
+  // Timestamps
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("strategic_partnerships")
+}
+
+model PartnershipActivity {
+  id                String             @id @default(cuid())
+  
+  // Activity Details
+  activityType      String             // "Meeting", "Joint_Marketing", "Lead_Share", "Revenue_Share"
+  description       String
+  outcome           String?
+  
+  // Performance Impact
+  leadsGenerated    Int                @default(0)
+  revenueImpact     Decimal            @default(0)
+  costImpact        Decimal            @default(0)
+  
+  // Follow-up
+  actionItems       String[]
+  nextSteps         String[]
+  followUpDate      DateTime?
+  
+  // Relations
+  partnershipId     String
+  partnership       StrategicPartnership @relation(fields: [partnershipId], references: [id])
+  managedById       String?
+  managedBy         User?              @relation(fields: [managedById], references: [id])
+  
+  // Timestamps
+  activityDate      DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("partnership_activities")
+}
+
+// Market Conquest Analytics
+model MarketConquestMetrics {
+  id                String             @id @default(cuid())
+  
+  // Time Period
+  period            String             // "Weekly", "Monthly", "Quarterly"
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Geographic Metrics
+  region            String             // "Bucks_County", "Philadelphia", "South_Jersey"
+  zipCodesActive    String[]
+  territoriesProtected Int             @default(0)
+  territoryPenetration Decimal         @default(0) // percentage
+  
+  // Professional Network
+  professionalsRecruited Int           @default(0)
+  goldTierPros      Int                @default(0)
+  platinumTierPros  Int                @default(0)
+  eliteTierPros     Int                @default(0)
+  averageTierLevel  Decimal?
+  
+  // Revenue Performance
+  totalRevenue      Decimal            @default(0)
+  subscriptionRevenue Decimal          @default(0)
+  commissionRevenue Decimal            @default(0)
+  partnershipRevenue Decimal           @default(0)
+  stormSurgeRevenue Decimal            @default(0)
+  
+  // Market Share
+  marketShareEstimate Decimal?         // percentage
+  competitorDisplacement Int           @default(0)
+  jobsWonFromCompetitors Int           @default(0)
+  newMarketCapture  Decimal            @default(0)
+  
+  // Strategic Objectives
+  propertyManagerContracts Int         @default(0)
+  municipalContracts Int               @default(0)
+  insurancePartnerships Int            @default(0)
+  franchiseInquiries Int               @default(0)
+  
+  // Expansion Metrics
+  newMarketsPenetrated String[]
+  expansionReadinessScore Decimal?     // 0-100
+  ipoReadinessScore Decimal?           // 0-100
+  
+  // Competitive Intelligence
+  majorCompetitorCount Int             @default(0)
+  competitiveThreatLevel String        // "Low", "Medium", "High"
+  marketDisruptionLevel String         // "None", "Minor", "Moderate", "Major"
+  
+  // Performance Indicators
+  customerAcquisitionCost Decimal?
+  customerLifetimeValue Decimal?
+  monthlyRecurringRevenue Decimal?
+  churnRate            Decimal?        // percentage
+  
+  // Projections
+  projectedRevenue     Decimal?
+  projectedMarketShare Decimal?
+  expansionTimeline    Json?           // Roadmap data
+  
+  // Timestamps
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@map("market_conquest_metrics")
+}
+
+// Execution Timeline Management
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  BLOCKED
+  CANCELLED
+}
+
+enum MilestoneType {
+  RECRUITMENT
+  TERRITORY_EXPANSION
+  PARTNERSHIP
+  REVENUE_TARGET
+  SYSTEM_DEVELOPMENT
+  MARKET_PENETRATION
+  COMPETITIVE_RESPONSE
+}
+
+model ConquestMilestone {
+  id                String             @id @default(cuid())
+  
+  // Milestone Details
+  title             String
+  description       String
+  type              MilestoneType
+  status            MilestoneStatus    @default(NOT_STARTED)
+  priority          String             // "Low", "Medium", "High", "Critical"
+  
+  // Timeline
+  plannedStartDate  DateTime
+  plannedEndDate    DateTime
+  actualStartDate   DateTime?
+  actualEndDate     DateTime?
+  
+  // Success Criteria
+  successMetrics    Json               // Measurable success criteria
+  targetValue       Decimal?
+  actualValue       Decimal?
+  progressPercentage Decimal           @default(0)
+  
+  // Dependencies
+  dependencies      String[]           // Other milestone IDs
+  blockers          String[]
+  prerequisites     String[]
+  
+  // Assignment
+  assignedTo        String?
+  assignedTeam      String[]
+  accountableParty  String?
+  
+  // Progress Tracking
+  weeklyProgress    Json?              // Week-by-week progress data
+  progressNotes     String[]
+  lastUpdateDate    DateTime?
+  
+  // Impact Assessment
+  revenueImpact     Decimal?
+  marketImpact      String?
+  competitiveAdvantage String[]
+  riskFactors       String[]
+  
+  // Relations
+  parentMilestoneId String?
+  subMilestones     ConquestMilestone[] @relation("MilestoneHierarchy")
+  parentMilestone   ConquestMilestone?  @relation("MilestoneHierarchy", fields: [parentMilestoneId], references: [id])
+  expansionPlanId   String?
+  expansionPlan     ExpansionPlan?     @relation(fields: [expansionPlanId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("conquest_milestones")
+}
+
+// Expansion Planning
+enum ExpansionPhase {
+  RESEARCH
+  PLANNING
+  PILOT
+  LAUNCH
+  GROWTH
+  OPTIMIZATION
+  MATURE
+}
+
+enum ExpansionStatus {
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model ExpansionPlan {
+  id                String             @id @default(cuid())
+  
+  // Market Details
+  targetMarket      String             // "Philadelphia", "South_Jersey", "Delaware"
+  marketType        String             // "Metropolitan", "Suburban", "Rural"
+  phase             ExpansionPhase     @default(RESEARCH)
+  status            ExpansionStatus    @default(PLANNED)
+  
+  // Market Analysis
+  marketSize        Decimal?           // Total addressable market
+  targetRevenue     Decimal?
+  timeToMarket      Int?               // months
+  investmentRequired Decimal?
+  
+  // Competitive Landscape
+  majorCompetitors  String[]
+  marketLeader      String?
+  marketShareTarget Decimal?           // percentage
+  competitiveAdvantages String[]
+  
+  // Resource Requirements
+  teamSize          Int?
+  keyHires          String[]
+  technologyNeeds   String[]
+  partnershipRequirements String[]
+  
+  // Launch Strategy
+  goToMarketStrategy Json              // Detailed strategy
+  marketingApproach String[]
+  pricingStrategy   String?
+  launchDate        DateTime?
+  
+  // Success Metrics
+  yearOneRevenue    Decimal?
+  yearTwoRevenue    Decimal?
+  breakEvenMonth    Int?               // Month to reach profitability
+  irrTarget         Decimal?           // Internal rate of return
+  
+  // Risk Assessment
+  riskFactors       String[]
+  mitigation        Json               // Risk mitigation strategies
+  contingencyPlans  String[]
+  
+  // Franchise Preparation
+  franchiseReady    Boolean            @default(false)
+  franchiseModel    String?            // "Area_Development", "Master_Franchise", "Unit_Franchise"
+  franchiseFee      Decimal?
+  royaltyPercentage Decimal?
+  
+  // Progress Tracking
+  progressMilestones Json?
+  currentPhaseProgress Decimal         @default(0)
+  nextPhaseDate     DateTime?
+  
+  // Relations
+  milestones        ConquestMilestone[]
+  
+  // Timestamps
+  plannedLaunch     DateTime?
+  actualLaunch      DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@map("expansion_plans")
+}
+
+// ============================================================================
+// OPERATIONAL INFRASTRUCTURE - BUSINESS OPERATING SYSTEM
+// ============================================================================
+
+// ============================================================================
+// 1. CUSTOMER SERVICE & SUPPORT MANAGEMENT
+// ============================================================================
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_CUSTOMER
+  PENDING_INTERNAL
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum TicketType {
+  TECHNICAL_ISSUE
+  BILLING_QUESTION
+  SERVICE_COMPLAINT
+  FEATURE_REQUEST
+  ACCOUNT_ACCESS
+  SAFETY_CONCERN
+  EMERGENCY_RESPONSE
+  DISPUTE_RESOLUTION
+  GENERAL_INQUIRY
+}
+
+enum TicketSource {
+  EMAIL
+  PHONE
+  LIVE_CHAT
+  WEB_FORM
+  MOBILE_APP
+  SOCIAL_MEDIA
+  INTERNAL
+}
+
+model SupportTicket {
+  id                String           @id @default(cuid())
+  
+  // Ticket Details
+  ticketNumber      String           @unique
+  title             String
+  description       String
+  type              TicketType
+  priority          TicketPriority   @default(NORMAL)
+  status            TicketStatus     @default(OPEN)
+  source            TicketSource
+  
+  // Customer Information
+  customerId        String?
+  customer          User?            @relation("CustomerTickets", fields: [customerId], references: [id])
+  customerEmail     String?
+  customerPhone     String?
+  customerName      String?
+  
+  // Assignment & Routing
+  assignedToId      String?
+  assignedTo        User?            @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  departmentId      String?
+  department        SupportDepartment? @relation(fields: [departmentId], references: [id])
+  escalatedToId     String?
+  escalatedTo       User?            @relation("EscalatedTickets", fields: [escalatedToId], references: [id])
+  
+  // Context & Relations
+  jobId             String?
+  job               Job?             @relation(fields: [jobId], references: [id])
+  equipmentId       String?
+  equipment         Equipment?       @relation(fields: [equipmentId], references: [id])
+  transactionId     String?
+  transaction       Transaction?     @relation(fields: [transactionId], references: [id])
+  
+  // Response Metrics
+  firstResponseTime Int?             // minutes
+  resolutionTime    Int?             // minutes
+  totalResponseTime Int?             // minutes
+  reopenCount       Int              @default(0)
+  
+  // Satisfaction
+  satisfactionRating Int?            // 1-5 stars
+  satisfactionFeedback String?
+  
+  // Attachments & Notes
+  attachments       String[]
+  internalNotes     String[]
+  
+  // SLA Tracking
+  slaBreached       Boolean          @default(false)
+  responseDeadline  DateTime?
+  resolutionDeadline DateTime?
+  
+  // Resolution
+  resolution        String?
+  resolutionType    String?          // "Solved", "Workaround", "Escalated", "Won't_Fix"
+  preventionNotes   String?
+  
+  // Relations
+  responses         TicketResponse[]
+  escalations       TicketEscalation[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  firstResponseAt   DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  
+  @@map("support_tickets")
+}
+
+model TicketResponse {
+  id                String           @id @default(cuid())
+  
+  // Response Details
+  message           String
+  isInternal        Boolean          @default(false)
+  isAutomated       Boolean          @default(false)
+  
+  // Authorship
+  authorId          String?
+  author            User?            @relation("TicketResponses", fields: [authorId], references: [id])
+  authorName        String?          // For non-user responses
+  authorEmail       String?
+  
+  // Content
+  attachments       String[]
+  messageType       String           @default("text") // "text", "email", "chat", "phone_summary"
+  
+  // Relations
+  ticketId          String
+  ticket            SupportTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("ticket_responses")
+}
+
+model TicketEscalation {
+  id                String           @id @default(cuid())
+  
+  // Escalation Details
+  reason            String
+  escalationType    String           // "Tier", "Manager", "Specialist", "External"
+  urgencyLevel      String           // "Standard", "Urgent", "Emergency"
+  
+  // Assignment
+  escalatedFromId   String?
+  escalatedFrom     User?            @relation("EscalationsFrom", fields: [escalatedFromId], references: [id])
+  escalatedToId     String
+  escalatedTo       User             @relation("EscalationsTo", fields: [escalatedToId], references: [id])
+  
+  // Tracking
+  acknowledged      Boolean          @default(false)
+  acknowledgedAt    DateTime?
+  resolved          Boolean          @default(false)
+  resolvedAt        DateTime?
+  
+  // Relations
+  ticketId          String
+  ticket            SupportTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("ticket_escalations")
+}
+
+model SupportDepartment {
+  id                String           @id @default(cuid())
+  
+  // Department Info
+  name              String           @unique
+  description       String?
+  
+  // Configuration
+  autoAssignment    Boolean          @default(true)
+  businessHours     Json?            // Schedule configuration
+  slaResponseTime   Int?             // minutes
+  slaResolutionTime Int?             // minutes
+  
+  // Contact Info
+  email             String?
+  phone             String?
+  
+  // Performance Metrics
+  avgResponseTime   Decimal?         // minutes
+  avgResolutionTime Decimal?         // minutes
+  satisfactionScore Decimal?         // 0-5
+  ticketVolume      Int              @default(0)
+  
+  // Relations
+  tickets           SupportTicket[]
+  staff             SupportStaff[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("support_departments")
+}
+
+model SupportStaff {
+  id                String           @id @default(cuid())
+  
+  // Staff Details
+  userId            String           @unique
+  user              User             @relation("SupportStaffUser", fields: [userId], references: [id])
+  
+  // Support Specific Info
+  supportLevel      String           // "Tier1", "Tier2", "Tier3", "Specialist", "Manager"
+  specializations   String[]         // Areas of expertise
+  maxConcurrentTickets Int?          @default(10)
+  
+  // Performance Metrics
+  ticketsResolved   Int              @default(0)
+  avgResolutionTime Decimal?         // minutes
+  customerRating    Decimal?         // 0-5
+  escalationRate    Decimal?         // percentage
+  
+  // Availability
+  isActive          Boolean          @default(true)
+  currentWorkload   Int              @default(0)
+  shiftStart        String?          // "09:00"
+  shiftEnd          String?          // "17:00"
+  timeZone          String?
+  
+  // Relations
+  departmentId      String
+  department        SupportDepartment @relation(fields: [departmentId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("support_staff")
+}
+
+model LiveChatSession {
+  id                String           @id @default(cuid())
+  
+  // Session Details
+  sessionId         String           @unique
+  status            String           // "Active", "Ended", "Transferred"
+  
+  // Participants
+  customerId        String?
+  customer          User?            @relation("ChatCustomer", fields: [customerId], references: [id])
+  agentId           String?
+  agent             User?            @relation("ChatAgent", fields: [agentId], references: [id])
+  
+  // Session Metrics
+  waitTime          Int?             // seconds
+  chatDuration      Int?             // seconds
+  messageCount      Int              @default(0)
+  transferCount     Int              @default(0)
+  
+  // Satisfaction
+  customerRating    Int?             // 1-5
+  feedbackComment   String?
+  
+  // Context
+  initialUrl        String?          // Page where chat started
+  userAgent         String?
+  ipAddress         String?
+  
+  // Resolution
+  ticketCreated     Boolean          @default(false)
+  ticketId          String?
+  resolved          Boolean          @default(false)
+  
+  // Relations
+  messages          ChatMessage[]
+  
+  // Timestamps
+  startedAt         DateTime         @default(now())
+  endedAt           DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("live_chat_sessions")
+}
+
+model ChatMessage {
+  id                String           @id @default(cuid())
+  
+  // Message Details
+  message           String
+  messageType       String           @default("text") // "text", "image", "file", "system"
+  isFromCustomer    Boolean
+  
+  // Sender Info
+  senderId          String?
+  sender            User?            @relation("ChatMessageSender", fields: [senderId], references: [id])
+  senderName        String?
+  
+  // Content
+  attachments       String[]
+  isAutomated       Boolean          @default(false)
+  
+  // Relations
+  sessionId         String
+  session           LiveChatSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("chat_messages")
+}
+
+// ============================================================================
+// 2. TEAM BUILDING & HR MANAGEMENT
+// ============================================================================
+
+enum EmployeeStatus {
+  ACTIVE
+  PROBATION
+  SUSPENDED
+  TERMINATED
+  RETIRED
+  LEAVE_OF_ABSENCE
+}
+
+enum EmployeeType {
+  FULL_TIME
+  PART_TIME
+  CONTRACTOR
+  INTERN
+  CONSULTANT
+  TEMPORARY
+}
+
+enum DepartmentType {
+  OPERATIONS
+  CUSTOMER_SERVICE
+  SALES
+  MARKETING
+  FINANCE
+  HR
+  TECHNOLOGY
+  LEGAL
+  EXECUTIVE
+}
+
+model Employee {
+  id                String           @id @default(cuid())
+  
+  // Employee Details
+  userId            String           @unique
+  user              User             @relation("EmployeeUser", fields: [userId], references: [id])
+  employeeId        String           @unique
+  
+  // Employment Info
+  status            EmployeeStatus   @default(ACTIVE)
+  employeeType      EmployeeType
+  jobTitle          String
+  department        String
+  reportingTo       String?          // Manager's user ID
+  manager           Employee?        @relation("ManagerReports", fields: [reportingTo], references: [userId])
+  directReports     Employee[]       @relation("ManagerReports")
+  
+  // Compensation
+  baseSalary        Decimal?
+  hourlyRate        Decimal?
+  commissionRate    Decimal?         // percentage
+  bonusEligible     Boolean          @default(false)
+  equityShares      Int?
+  
+  // Work Details
+  startDate         DateTime
+  endDate           DateTime?
+  workLocation      String?          // "Remote", "Office", "Hybrid", "Field"
+  timeZone          String?
+  
+  // Performance
+  performanceRating Decimal?         // 0-5
+  lastReviewDate    DateTime?
+  nextReviewDate    DateTime?
+  goalsProgress     Json?            // Performance goals tracking
+  
+  // Skills & Development
+  skills            String[]
+  certifications    String[]
+  trainingCompleted String[]
+  careerLevel       String?          // "Entry", "Mid", "Senior", "Lead", "Principal"
+  
+  // Benefits & PTO
+  ptoBalance        Decimal          @default(0) // hours
+  sickBalance       Decimal          @default(0) // hours
+  benefitsEnrolled  String[]
+  
+  // Relations
+  hrRecords         HRRecord[]
+  performanceReviews PerformanceReview[]
+  trainingRecords   TrainingRecord[]
+  timeEntries       TimeEntry[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("employees")
+}
+
+model HRRecord {
+  id                String           @id @default(cuid())
+  
+  // Record Details
+  recordType        String           // "Hire", "Promotion", "Disciplinary", "Performance", "Termination"
+  title             String
+  description       String
+  
+  // Documentation
+  documents         String[]         // File URLs
+  confidential      Boolean          @default(true)
+  
+  // Action Details
+  actionTaken       String?
+  followUpRequired  Boolean          @default(false)
+  followUpDate      DateTime?
+  
+  // Relations
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  createdById       String?
+  createdBy         User?            @relation("HRRecordCreator", fields: [createdById], references: [id])
+  
+  // Timestamps
+  recordDate        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("hr_records")
+}
+
+model PerformanceReview {
+  id                String           @id @default(cuid())
+  
+  // Review Details
+  reviewPeriod      String           // "Q1_2024", "Annual_2024"
+  reviewType        String           // "Annual", "Quarterly", "Probationary", "Promotion"
+  status            String           @default("Scheduled") // "Scheduled", "In_Progress", "Completed", "Overdue"
+  
+  // Ratings
+  overallRating     Decimal?         // 0-5
+  technicalSkills   Decimal?         // 0-5
+  communicationSkills Decimal?       // 0-5
+  teamwork          Decimal?         // 0-5
+  leadership        Decimal?         // 0-5
+  
+  // Goals & Development
+  goalsAchieved     Json?            // Goals from previous review
+  newGoals          Json?            // Goals for next period
+  developmentPlan   String?
+  trainingRecommendations String[]
+  
+  // Feedback
+  managerFeedback   String?
+  employeeFeedback  String?
+  employeeSelfAssessment String?
+  
+  // Outcomes
+  salaryAdjustment  Decimal?         // percentage change
+  bonusAwarded      Decimal?
+  promotionRecommended Boolean       @default(false)
+  actionItems       String[]
+  
+  // Relations
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  reviewerId        String?
+  reviewer          User?            @relation("PerformanceReviewer", fields: [reviewerId], references: [id])
+  
+  // Timestamps
+  reviewDate        DateTime
+  completedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("performance_reviews")
+}
+
+model TrainingRecord {
+  id                String           @id @default(cuid())
+  
+  // Training Details
+  trainingName      String
+  trainingType      String           // "Safety", "Technical", "Leadership", "Compliance"
+  provider          String?
+  duration          Int?             // hours
+  
+  // Completion
+  status            String           // "Enrolled", "In_Progress", "Completed", "Failed", "Expired"
+  completionDate    DateTime?
+  expirationDate    DateTime?
+  certificateUrl    String?
+  score             Decimal?         // percentage or grade
+  
+  // Requirements
+  isRequired        Boolean          @default(false)
+  requiredBy        DateTime?
+  costPerEmployee   Decimal?
+  
+  // Relations
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  
+  // Timestamps
+  enrolledAt        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("training_records")
+}
+
+model TimeEntry {
+  id                String           @id @default(cuid())
+  
+  // Time Details
+  clockIn           DateTime
+  clockOut          DateTime?
+  totalHours        Decimal?
+  billableHours     Decimal?
+  overtimeHours     Decimal?
+  
+  // Work Details
+  workLocation      String?
+  projectId         String?
+  taskDescription   String?
+  
+  // Status
+  status            String           @default("Active") // "Active", "Completed", "Approved", "Rejected"
+  approvedBy        String?
+  approvedAt        DateTime?
+  
+  // Relations
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  
+  // Timestamps
+  workDate          DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("time_entries")
+}
+
+model Department {
+  id                String           @id @default(cuid())
+  
+  // Department Info
+  name              String           @unique
+  type              DepartmentType
+  description       String?
+  
+  // Management
+  headOfDepartment  String?          // User ID
+  budget            Decimal?
+  headcount         Int              @default(0)
+  maxHeadcount      Int?
+  
+  // Performance
+  departmentGoals   Json?
+  kpis              Json?            // Key performance indicators
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("departments")
+}
+
+// ============================================================================
+// 3. ADVANCED ANALYTICS & BUSINESS INTELLIGENCE
+// ============================================================================
+
+enum MetricType {
+  REVENUE
+  USERS
+  PERFORMANCE
+  OPERATIONAL
+  FINANCIAL
+  CUSTOMER
+  GROWTH
+  EFFICIENCY
+}
+
+enum MetricFrequency {
+  REAL_TIME
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+model KPIMetric {
+  id                String           @id @default(cuid())
+  
+  // Metric Definition
+  name              String           @unique
+  description       String
+  type              MetricType
+  category          String?
+  
+  // Calculation
+  calculationMethod String           // "Sum", "Average", "Count", "Percentage", "Custom"
+  formula           String?          // For custom calculations
+  sourceTable       String?          // Primary data source
+  sourceColumn      String?
+  
+  // Targets & Thresholds
+  targetValue       Decimal?
+  warningThreshold  Decimal?
+  criticalThreshold Decimal?
+  
+  // Display
+  unit              String?          // "$", "%", "units", etc.
+  displayFormat     String?          // "currency", "percentage", "number"
+  frequency         MetricFrequency
+  
+  // Status
+  isActive          Boolean          @default(true)
+  isPublic          Boolean          @default(false)
+  
+  // Relations
+  dataPoints        KPIDataPoint[]
+  alerts            KPIAlert[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("kpi_metrics")
+}
+
+model KPIDataPoint {
+  id                String           @id @default(cuid())
+  
+  // Data
+  value             Decimal
+  period            DateTime         // Time period this value represents
+  periodType        String           // "hour", "day", "week", "month"
+  
+  // Context
+  additionalData    Json?            // Any additional context data
+  
+  // Relations
+  metricId          String
+  metric            KPIMetric        @relation(fields: [metricId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  recordedAt        DateTime         @default(now())
+  
+  @@unique([metricId, period, periodType])
+  @@map("kpi_data_points")
+}
+
+model KPIAlert {
+  id                String           @id @default(cuid())
+  
+  // Alert Details
+  alertType         String           // "Threshold", "Trend", "Anomaly"
+  severity          String           // "Info", "Warning", "Critical"
+  message           String
+  
+  // Trigger Conditions
+  triggerValue      Decimal?
+  thresholdBreached String?          // "Warning" or "Critical"
+  
+  // Status
+  isActive          Boolean          @default(true)
+  isAcknowledged    Boolean          @default(false)
+  acknowledgedBy    String?
+  acknowledgedAt    DateTime?
+  
+  // Relations
+  metricId          String
+  metric            KPIMetric        @relation(fields: [metricId], references: [id])
+  
+  // Timestamps
+  triggeredAt       DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  
+  @@map("kpi_alerts")
+}
+
+model PredictiveModel {
+  id                String           @id @default(cuid())
+  
+  // Model Details
+  name              String           @unique
+  description       String
+  modelType         String           // "Linear_Regression", "Time_Series", "Classification", "Clustering"
+  
+  // Prediction Target
+  targetMetric      String           // What we're predicting
+  predictionHorizon Int              // Days into the future
+  
+  // Model Performance
+  accuracy          Decimal?         // 0-100 percentage
+  lastTrainingDate  DateTime?
+  trainingDataSize  Int?
+  
+  // Configuration
+  features          String[]         // Input features
+  algorithm         String?
+  hyperparameters   Json?
+  
+  // Status
+  isActive          Boolean          @default(true)
+  version           String           @default("1.0")
+  
+  // Relations
+  predictions       Prediction[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("predictive_models")
+}
+
+model Prediction {
+  id                String           @id @default(cuid())
+  
+  // Prediction Details
+  predictedValue    Decimal
+  confidence        Decimal?         // 0-100 percentage
+  predictionDate    DateTime         // When prediction was made
+  targetDate        DateTime         // Date being predicted for
+  
+  // Context
+  inputFeatures     Json?            // Feature values used for prediction
+  scenario          String?          // "Best_Case", "Worst_Case", "Expected"
+  
+  // Validation
+  actualValue       Decimal?         // Actual value when available
+  accuracy          Decimal?         // How close prediction was
+  
+  // Relations
+  modelId           String
+  model             PredictiveModel  @relation(fields: [modelId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("predictions")
+}
+
+model BusinessIntelligenceReport {
+  id                String           @id @default(cuid())
+  
+  // Report Details
+  name              String
+  description       String
+  reportType        String           // "Dashboard", "Executive_Summary", "Detailed_Analysis"
+  
+  // Content
+  reportData        Json             // Report structure and data
+  visualizations    Json?            // Chart and graph configurations
+  keyInsights       String[]
+  recommendations   String[]
+  
+  // Scheduling
+  isScheduled       Boolean          @default(false)
+  frequency         String?          // "Daily", "Weekly", "Monthly"
+  nextRunDate       DateTime?
+  
+  // Access Control
+  isPublic          Boolean          @default(false)
+  authorizedUsers   String[]         // User IDs with access
+  
+  // Relations
+  createdById       String
+  createdBy         User             @relation("ReportCreator", fields: [createdById], references: [id])
+  
+  // Timestamps
+  lastGeneratedAt   DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("business_intelligence_reports")
+}
+
+// ============================================================================
+// 4. PARTNERSHIP & INTEGRATION HUB
+// ============================================================================
+
+enum IntegrationType {
+  API
+  WEBHOOK
+  FILE_TRANSFER
+  DATABASE
+  THIRD_PARTY_SERVICE
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  MAINTENANCE
+  DEPRECATED
+}
+
+model SystemIntegration {
+  id                String           @id @default(cuid())
+  
+  // Integration Details
+  name              String           @unique
+  description       String
+  type              IntegrationType
+  status            IntegrationStatus @default(ACTIVE)
+  
+  // Technical Details
+  apiEndpoint       String?
+  apiKey            String?          // Encrypted
+  webhookUrl        String?
+  authMethod        String?          // "API_Key", "OAuth", "Basic_Auth"
+  
+  // Configuration
+  configuration     Json?            // Integration-specific settings
+  mappingRules      Json?            // Data mapping configuration
+  syncFrequency     String?          // "Real_Time", "Hourly", "Daily"
+  
+  // Performance
+  lastSyncAt        DateTime?
+  syncStatus        String?          // "Success", "Failed", "Partial"
+  errorCount        Int              @default(0)
+  successRate       Decimal?         // percentage
+  
+  // Monitoring
+  isMonitored       Boolean          @default(true)
+  alertOnFailure    Boolean          @default(true)
+  
+  // Relations
+  integrationLogs   IntegrationLog[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("system_integrations")
+}
+
+model IntegrationLog {
+  id                String           @id @default(cuid())
+  
+  // Log Details
+  operation         String           // "Sync", "Import", "Export", "Webhook"
+  status            String           // "Success", "Failed", "Warning"
+  recordsProcessed  Int?
+  recordsSucceeded  Int?
+  recordsFailed     Int?
+  
+  // Execution Details
+  startTime         DateTime
+  endTime           DateTime?
+  duration          Int?             // milliseconds
+  
+  // Error Information
+  errorMessage      String?
+  errorDetails      Json?
+  
+  // Data
+  requestData       Json?
+  responseData      Json?
+  
+  // Relations
+  integrationId     String
+  integration       SystemIntegration @relation(fields: [integrationId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("integration_logs")
+}
+
+model EquipmentPartnership {
+  id                String           @id @default(cuid())
+  
+  // Manufacturer Details
+  manufacturerName  String           // "Stihl", "Husqvarna", "Vermeer"
+  contactPerson     String?
+  contactEmail      String?
+  contactPhone      String?
+  
+  // Partnership Terms
+  discountPercentage Decimal?
+  volumeThresholds  Json?            // Volume-based pricing tiers
+  exclusiveProducts String[]         // Products we have exclusive access to
+  
+  // Inventory Integration
+  inventoryApiUrl   String?
+  realTimeInventory Boolean          @default(false)
+  autoReorder       Boolean          @default(false)
+  reorderThreshold  Int?
+  
+  // Performance Metrics
+  totalPurchases    Decimal          @default(0)
+  totalSavings      Decimal          @default(0)
+  averageDeliveryTime Int?           // days
+  defectRate        Decimal?         // percentage
+  
+  // Relations
+  equipmentOrders   EquipmentOrder[]
+  
+  // Timestamps
+  partnershipStart  DateTime
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("equipment_partnerships")
+}
+
+model EquipmentOrder {
+  id                String           @id @default(cuid())
+  
+  // Order Details
+  orderNumber       String           @unique
+  orderType         String           // "Purchase", "Rental", "Lease"
+  status            String           // "Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"
+  
+  // Financial
+  totalAmount       Decimal
+  discountApplied   Decimal?
+  taxAmount         Decimal?
+  shippingCost      Decimal?
+  
+  // Items
+  items             Json             // Array of equipment items ordered
+  
+  // Delivery
+  requestedDeliveryDate DateTime?
+  actualDeliveryDate DateTime?
+  deliveryAddress   String?
+  
+  // Relations
+  partnershipId     String?
+  partnership       EquipmentPartnership? @relation(fields: [partnershipId], references: [id])
+  orderedById       String
+  orderedBy         User             @relation("EquipmentOrderer", fields: [orderedById], references: [id])
+  
+  // Timestamps
+  orderDate         DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("equipment_orders")
+}
+
+model InsuranceIntegration {
+  id                String           @id @default(cuid())
+  
+  // Insurance Company Details
+  companyName       String
+  contactPerson     String?
+  contactEmail      String?
+  contactPhone      String?
+  
+  // Integration Details
+  apiEndpoint       String?
+  authCredentials   String?          // Encrypted
+  claimSubmissionUrl String?
+  
+  // Partnership Benefits
+  preferredRates    Boolean          @default(false)
+  expeditedClaims   Boolean          @default(false)
+  directBilling     Boolean          @default(false)
+  
+  // Performance Metrics
+  claimsSubmitted   Int              @default(0)
+  averageProcessingTime Int?         // days
+  approvalRate      Decimal?         // percentage
+  savingsGenerated  Decimal          @default(0)
+  
+  // Relations
+  insuranceClaims   InsuranceClaim[]
+  
+  // Timestamps
+  integrationDate   DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("insurance_integrations")
+}
+
+model InsuranceClaim {
+  id                String           @id @default(cuid())
+  
+  // Claim Details
+  claimNumber       String           @unique
+  claimType         String           // "Property_Damage", "Liability", "Workers_Comp"
+  description       String
+  
+  // Incident Details
+  incidentDate      DateTime
+  incidentLocation  String
+  damageAmount      Decimal?
+  
+  // Status
+  status            String           // "Submitted", "Under_Review", "Approved", "Denied", "Paid"
+  submittedDate     DateTime         @default(now())
+  approvedDate      DateTime?
+  paidDate          DateTime?
+  
+  // Financial
+  requestedAmount   Decimal
+  approvedAmount    Decimal?
+  deductible        Decimal?
+  
+  // Documentation
+  documents         String[]
+  photos            String[]
+  
+  // Relations
+  integrationId     String?
+  integration       InsuranceIntegration? @relation(fields: [integrationId], references: [id])
+  jobId             String?
+  job               Job?             @relation(fields: [jobId], references: [id])
+  claimantId        String
+  claimant          User             @relation("InsuranceClaimant", fields: [claimantId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("insurance_claims")
+}
+
+// ============================================================================
+// 5. CASH FLOW & WORKING CAPITAL MANAGEMENT
+// ============================================================================
+
+enum CashFlowType {
+  INFLOW
+  OUTFLOW
+}
+
+enum CashFlowCategory {
+  REVENUE
+  OPERATING_EXPENSES
+  EQUIPMENT_PURCHASE
+  PAYROLL
+  TAXES
+  LOAN_PAYMENT
+  INVESTMENT
+  OTHER
+}
+
+model CashFlowEntry {
+  id                String           @id @default(cuid())
+  
+  // Entry Details
+  amount            Decimal
+  type              CashFlowType
+  category          CashFlowCategory
+  description       String
+  
+  // Classification
+  isRecurring       Boolean          @default(false)
+  recurringFrequency String?         // "Weekly", "Monthly", "Quarterly"
+  
+  // Status
+  status            String           // "Planned", "Actual", "Cancelled"
+  isConfirmed       Boolean          @default(false)
+  
+  // Relations
+  transactionId     String?
+  transaction       Transaction?     @relation("CashFlowTransaction", fields: [transactionId], references: [id])
+  jobId             String?
+  job               Job?             @relation("CashFlowJob", fields: [jobId], references: [id])
+  
+  // Timing
+  plannedDate       DateTime
+  actualDate        DateTime?
+  
+  // Bank Details
+  bankAccount       String?
+  paymentMethod     String?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("cash_flow_entries")
+}
+
+model CashFlowForecast {
+  id                String           @id @default(cuid())
+  
+  // Forecast Details
+  forecastName      String
+  forecastPeriod    String           // "Weekly", "Monthly", "Quarterly"
+  startDate         DateTime
+  endDate           DateTime
+  
+  // Projections
+  projectedInflows  Decimal          @default(0)
+  projectedOutflows Decimal          @default(0)
+  netCashFlow       Decimal          @default(0)
+  endingBalance     Decimal?
+  
+  // Scenario Analysis
+  scenario          String           @default("Expected") // "Optimistic", "Expected", "Pessimistic"
+  assumptions       Json?            // Forecast assumptions
+  
+  // Accuracy Tracking
+  actualInflows     Decimal?
+  actualOutflows    Decimal?
+  variance          Decimal?         // percentage
+  
+  // Relations
+  forecastItems     CashFlowForecastItem[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("cash_flow_forecasts")
+}
+
+model CashFlowForecastItem {
+  id                String           @id @default(cuid())
+  
+  // Item Details
+  description       String
+  amount            Decimal
+  type              CashFlowType
+  category          CashFlowCategory
+  
+  // Timing
+  expectedDate      DateTime
+  probability       Decimal?         // 0-100 percentage chance
+  
+  // Relations
+  forecastId        String
+  forecast          CashFlowForecast @relation(fields: [forecastId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("cash_flow_forecast_items")
+}
+
+model WorkingCapitalMetrics {
+  id                String           @id @default(cuid())
+  
+  // Period
+  reportDate        DateTime
+  period            String           // "Monthly", "Quarterly"
+  
+  // Current Assets
+  cash              Decimal          @default(0)
+  accountsReceivable Decimal         @default(0)
+  inventory         Decimal          @default(0)
+  otherCurrentAssets Decimal         @default(0)
+  totalCurrentAssets Decimal         @default(0)
+  
+  // Current Liabilities
+  accountsPayable   Decimal          @default(0)
+  shortTermDebt     Decimal          @default(0)
+  accruedExpenses   Decimal          @default(0)
+  otherCurrentLiabilities Decimal    @default(0)
+  totalCurrentLiabilities Decimal    @default(0)
+  
+  // Working Capital Metrics
+  workingCapital    Decimal          @default(0)
+  workingCapitalRatio Decimal?       // Current Assets / Current Liabilities
+  quickRatio        Decimal?         // (Current Assets - Inventory) / Current Liabilities
+  
+  // Turnover Ratios
+  receivablesTurnover Decimal?
+  inventoryTurnover Decimal?
+  payablesTurnover  Decimal?
+  
+  // Days Metrics
+  daysInReceivables Int?
+  daysInInventory   Int?
+  daysInPayables    Int?
+  cashConversionCycle Int?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@unique([reportDate, period])
+  @@map("working_capital_metrics")
+}
+
+model PaymentDelay {
+  id                String           @id @default(cuid())
+  
+  // Payment Details
+  amount            Decimal
+  originalDueDate   DateTime
+  actualPaymentDate DateTime?
+  daysOverdue       Int?
+  
+  // Customer Information
+  customerId        String
+  customer          User             @relation("DelayedPayments", fields: [customerId], references: [id])
+  
+  // Reason & Resolution
+  delayReason       String?
+  resolutionAction  String?
+  collectionEfforts Json?            // Array of collection attempts
+  
+  // Status
+  status            String           // "Overdue", "Resolved", "Write_Off", "Collections"
+  
+  // Impact
+  interestCharged   Decimal?
+  lateFees          Decimal?
+  collectionCosts   Decimal?
+  
+  // Relations
+  transactionId     String?
+  transaction       Transaction?     @relation("DelayedTransaction", fields: [transactionId], references: [id])
+  jobId             String?
+  job               Job?             @relation("DelayedJobPayment", fields: [jobId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  resolvedAt        DateTime?
+  
+  @@map("payment_delays")
+}
+
+// ============================================================================
+// 6. FUNDING & INVESTMENT MANAGEMENT
+// ============================================================================
+
+enum FundingStage {
+  PRE_SEED
+  SEED
+  SERIES_A
+  SERIES_B
+  SERIES_C
+  BRIDGE
+  IPO_PREPARATION
+  PUBLIC
+}
+
+enum FundingType {
+  EQUITY
+  DEBT
+  CONVERTIBLE
+  GRANT
+  REVENUE_BASED
+  CROWDFUNDING
+}
+
+enum InvestorType {
+  ANGEL
+  VC_FUND
+  STRATEGIC
+  BANK
+  GOVERNMENT
+  CROWDFUNDING_PLATFORM
+  FAMILY_OFFICE
+}
+
+model FundingRound {
+  id                String           @id @default(cuid())
+  
+  // Round Details
+  roundName         String           // "Series A", "Seed Round"
+  stage             FundingStage
+  type              FundingType
+  status            String           // "Planning", "Active", "Closed", "Cancelled"
+  
+  // Financial Terms
+  targetAmount      Decimal
+  raisedAmount      Decimal          @default(0)
+  valuation         Decimal?         // Pre-money valuation
+  postMoneyValuation Decimal?
+  
+  // Timeline
+  launchDate        DateTime?
+  targetCloseDate   DateTime?
+  actualCloseDate   DateTime?
+  
+  // Use of Funds
+  useOfFunds        Json             // Breakdown of fund allocation
+  
+  // Relations
+  investments       Investment[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("funding_rounds")
+}
+
+model Investment {
+  id                String           @id @default(cuid())
+  
+  // Investment Details
+  amount            Decimal
+  sharePrice        Decimal?
+  sharesIssued      Int?
+  equityPercentage  Decimal?
+  
+  // Terms
+  liquidationPreference String?      // "1x Non-Participating", "2x Participating"
+  dividendRate      Decimal?
+  votingRights      Boolean          @default(true)
+  boardSeat         Boolean          @default(false)
+  
+  // Status
+  status            String           // "Committed", "Signed", "Funded", "Cancelled"
+  
+  // Documentation
+  termSheet         String?          // URL to term sheet
+  signedDocuments   String[]         // URLs to signed documents
+  
+  // Relations
+  fundingRoundId    String
+  fundingRound      FundingRound     @relation(fields: [fundingRoundId], references: [id])
+  investorId        String
+  investor          Investor         @relation(fields: [investorId], references: [id])
+  
+  // Timestamps
+  commitmentDate    DateTime         @default(now())
+  fundingDate       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("investments")
+}
+
+model Investor {
+  id                String           @id @default(cuid())
+  
+  // Investor Details
+  name              String
+  type              InvestorType
+  email             String?
+  phone             String?
+  website           String?
+  
+  // Investment Criteria
+  minInvestment     Decimal?
+  maxInvestment     Decimal?
+  preferredStages   String[]         // Funding stages they invest in
+  sectors           String[]         // Industry sectors of interest
+  
+  // Track Record
+  totalInvestments  Int              @default(0)
+  averageInvestment Decimal?
+  successfulExits   Int              @default(0)
+  
+  // Relationship
+  relationshipStage String           // "Prospect", "Initial_Contact", "Due_Diligence", "Investor"
+  primaryContact    String?
+  lastContactDate   DateTime?
+  nextFollowUp      DateTime?
+  
+  // Notes & Intelligence
+  investmentThesis  String?
+  notes             String?
+  referredBy        String?
+  
+  // Relations
+  investments       Investment[]
+  interactions      InvestorInteraction[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("investors")
+}
+
+model InvestorInteraction {
+  id                String           @id @default(cuid())
+  
+  // Interaction Details
+  interactionType   String           // "Email", "Call", "Meeting", "Pitch", "Due_Diligence"
+  subject           String
+  description       String
+  outcome           String?
+  
+  // Next Steps
+  actionItems       String[]
+  nextSteps         String[]
+  followUpDate      DateTime?
+  
+  // Participants
+  internalParticipants String[]      // User IDs
+  externalParticipants String[]      // Names/emails
+  
+  // Documents
+  documents         String[]         // URLs to related documents
+  
+  // Relations
+  investorId        String
+  investor          Investor         @relation(fields: [investorId], references: [id])
+  recordedById      String?
+  recordedBy        User?            @relation("InvestorInteractionRecorder", fields: [recordedById], references: [id])
+  
+  // Timestamps
+  interactionDate   DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("investor_interactions")
+}
+
+model RunwayCalculation {
+  id                String           @id @default(cuid())
+  
+  // Current State
+  currentCash       Decimal
+  monthlyBurnRate   Decimal
+  
+  // Runway Calculations
+  runwayMonths      Decimal          // Current runway
+  runwayEndDate     DateTime?        // When funds run out
+  
+  // Growth Scenarios
+  optimisticBurn    Decimal?         // Lower burn rate scenario
+  pessimisticBurn   Decimal?         // Higher burn rate scenario
+  optimisticRunway  Decimal?
+  pessimisticRunway Decimal?
+  
+  // Revenue Projections
+  monthlyRevenue    Decimal?
+  revenueGrowthRate Decimal?         // percentage
+  breakEvenMonth    Int?             // Month when revenue = burn
+  
+  // Funding Requirements
+  nextFundingAmount Decimal?
+  nextFundingDate   DateTime?
+  minimumRunway     Int?             // Minimum months desired
+  
+  // Scenario Analysis
+  scenario          String           @default("Current") // "Current", "Growth", "Conservative"
+  assumptions       Json?
+  
+  // Timestamps
+  calculationDate   DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  
+  @@map("runway_calculations")
+}
+
+model ValuationModel {
+  id                String           @id @default(cuid())
+  
+  // Model Details
+  modelName         String
+  valuationMethod   String           // "DCF", "Comparable_Companies", "Precedent_Transactions", "Asset_Based"
+  
+  // Financial Data
+  currentRevenue    Decimal?
+  projectedRevenue  Json?            // Revenue projections by year
+  growthRate        Decimal?         // percentage
+  profitMargins     Json?            // Margin projections
+  
+  // Market Data
+  marketSize        Decimal?
+  marketGrowthRate  Decimal?
+  marketShare       Decimal?
+  
+  // Valuation Results
+  baselineValuation Decimal?
+  optimisticValuation Decimal?
+  conservativeValuation Decimal?
+  
+  // Multiples
+  revenueMultiple   Decimal?
+  ebitdaMultiple    Decimal?
+  
+  // Assumptions
+  discountRate      Decimal?
+  terminalGrowthRate Decimal?
+  assumptions       Json?
+  
+  // Context
+  valuationDate     DateTime         @default(now())
+  purpose           String?          // "Fundraising", "Acquisition", "Internal"
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("valuation_models")
+}
+
+// ============================================================================
+// 7. FINANCIAL CONTROLS & COMPLIANCE
+// ============================================================================
+
+enum TaxDocumentType {
+  FORM_1099_NEC
+  FORM_1099_MISC
+  FORM_W9
+  FORM_W4
+  QUARTERLY_RETURN
+  ANNUAL_RETURN
+  SALES_TAX_RETURN
+}
+
+enum ComplianceType {
+  TAX
+  LABOR
+  SAFETY
+  ENVIRONMENTAL
+  LICENSING
+  INSURANCE
+  FINANCIAL_REPORTING
+}
+
+model TaxDocument {
+  id                String           @id @default(cuid())
+  
+  // Document Details
+  documentType      TaxDocumentType
+  taxYear           Int
+  documentNumber    String?
+  
+  // Recipient Information
+  recipientId       String?
+  recipient         User?            @relation("TaxDocumentRecipient", fields: [recipientId], references: [id])
+  recipientName     String?
+  recipientTin      String?          // Tax Identification Number
+  recipientAddress  String?
+  
+  // Financial Data
+  totalAmount       Decimal?
+  federalTaxWithheld Decimal?
+  stateTaxWithheld  Decimal?
+  nonEmployeeCompensation Decimal?
+  
+  // Status
+  status            String           // "Draft", "Generated", "Sent", "Filed"
+  isElectronicFiling Boolean         @default(true)
+  
+  // Filing Information
+  filedDate         DateTime?
+  confirmationNumber String?
+  filingMethod      String?          // "Electronic", "Paper", "Third_Party"
+  
+  // Document Storage
+  documentUrl       String?
+  backupCopies      String[]
+  
+  // Relations
+  transactionIds    String[]         // Related transaction IDs
+  
+  // Timestamps
+  generatedDate     DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("tax_documents")
+}
+
+model ComplianceRecord {
+  id                String           @id @default(cuid())
+  
+  // Record Details
+  complianceType    ComplianceType
+  title             String
+  description       String
+  
+  // Requirements
+  regulatoryBody    String?          // "OSHA", "DOL", "EPA", etc.
+  regulation        String?          // Specific regulation/code
+  requirement       String
+  
+  // Status
+  status            String           // "Compliant", "Non_Compliant", "In_Progress", "Pending_Review"
+  lastAuditDate     DateTime?
+  nextAuditDate     DateTime?
+  
+  // Documentation
+  evidence          String[]         // URLs to compliance evidence
+  certificates      String[]         // URLs to certificates
+  
+  // Responsible Party
+  assignedTo        String?
+  assignedUser      User?            @relation("ComplianceAssignee", fields: [assignedTo], references: [id])
+  
+  // Remediation
+  nonComplianceRisk String?          // Risk level if not compliant
+  actionPlan        String?
+  deadline          DateTime?
+  
+  // Cost
+  complianceCost    Decimal?
+  penaltyRisk       Decimal?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("compliance_records")
+}
+
+model FraudDetection {
+  id                String           @id @default(cuid())
+  
+  // Detection Details
+  alertType         String           // "Transaction_Anomaly", "User_Behavior", "Payment_Pattern"
+  riskScore         Decimal          // 0-100
+  severity          String           // "Low", "Medium", "High", "Critical"
+  
+  // Alert Data
+  description       String
+  detectionRules    String[]         // Rules that triggered alert
+  
+  // Related Data
+  userId            String?
+  user              User?            @relation("FraudAlerts", fields: [userId], references: [id])
+  transactionId     String?
+  transaction       Transaction?     @relation("FraudTransaction", fields: [transactionId], references: [id])
+  
+  // Investigation
+  status            String           // "Open", "Investigating", "Resolved", "False_Positive"
+  investigatedBy    String?
+  investigator      User?            @relation("FraudInvestigator", fields: [investigatedBy], references: [id])
+  
+  // Actions Taken
+  actionsTaken      String[]
+  accountSuspended  Boolean          @default(false)
+  transactionBlocked Boolean         @default(false)
+  
+  // Resolution
+  isLegitimate      Boolean?
+  notes             String?
+  preventionMeasures String[]
+  
+  // Timestamps
+  detectedAt        DateTime         @default(now())
+  investigatedAt    DateTime?
+  resolvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("fraud_detection")
+}
+
+model PaymentDispute {
+  id                String           @id @default(cuid())
+  
+  // Dispute Details
+  disputeType       String           // "Chargeback", "Refund_Request", "Service_Dispute"
+  amount            Decimal
+  reason            String
+  description       String
+  
+  // Status
+  status            String           // "Open", "Under_Review", "Resolved", "Escalated"
+  priority          String           // "Low", "Medium", "High"
+  
+  // Parties
+  customerId        String
+  customer          User             @relation("DisputeCustomer", fields: [customerId], references: [id])
+  
+  // Financial Impact
+  chargebackFee     Decimal?
+  processingCost    Decimal?
+  potentialLoss     Decimal?
+  
+  // Evidence
+  evidence          String[]         // URLs to supporting documents
+  customerEvidence  String[]
+  companyResponse   String?
+  
+  // Resolution
+  resolutionType    String?          // "Refund", "Partial_Refund", "No_Action", "Chargeback_Won"
+  resolutionAmount  Decimal?
+  resolutionNotes   String?
+  
+  // Prevention
+  preventionActions String[]
+  policyChanges     String[]
+  
+  // Relations
+  transactionId     String?
+  transaction       Transaction?     @relation("DisputedTransaction", fields: [transactionId], references: [id])
+  jobId             String?
+  job               Job?             @relation("DisputedJob", fields: [jobId], references: [id])
+  
+  // Timestamps
+  disputeDate       DateTime         @default(now())
+  dueDate           DateTime?
+  resolvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("payment_disputes")
+}
+
+model AccountingIntegration {
+  id                String           @id @default(cuid())
+  
+  // Integration Details
+  platform          String           // "QuickBooks", "Xero", "FreshBooks"
+  accountId         String?
+  apiCredentials    String?          // Encrypted
+  
+  // Sync Configuration
+  autoSync          Boolean          @default(true)
+  syncFrequency     String           // "Real_Time", "Daily", "Weekly"
+  lastSyncAt        DateTime?
+  
+  // Mapping Configuration
+  accountMapping    Json?            // Chart of accounts mapping
+  categoryMapping   Json?            // Expense category mapping
+  
+  // Sync Status
+  status            String           // "Active", "Error", "Disconnected"
+  lastSyncStatus    String?          // "Success", "Failed", "Partial"
+  errorMessage      String?
+  
+  // Performance
+  recordsSynced     Int              @default(0)
+  syncErrors        Int              @default(0)
+  
+  // Relations
+  syncLogs          AccountingSyncLog[]
+  
+  // Timestamps
+  connectedAt       DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("accounting_integrations")
+}
+
+model AccountingSyncLog {
+  id                String           @id @default(cuid())
+  
+  // Sync Details
+  syncType          String           // "Full", "Incremental", "Manual"
+  recordType        String           // "Transactions", "Customers", "Products"
+  recordsProcessed  Int
+  recordsSucceeded  Int
+  recordsFailed     Int
+  
+  // Timing
+  startTime         DateTime
+  endTime           DateTime?
+  duration          Int?             // seconds
+  
+  // Results
+  status            String           // "Success", "Failed", "Partial"
+  errorMessage      String?
+  errorDetails      Json?
+  
+  // Relations
+  integrationId     String
+  integration       AccountingIntegration @relation(fields: [integrationId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("accounting_sync_logs")
+}
+
+// ============================================================================
+// 8. BRAND BUILDING & TRUST MANAGEMENT
+// ============================================================================
+
+enum CertificationStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  REVOKED
+  PENDING_RENEWAL
+}
+
+enum ReviewSource {
+  GOOGLE
+  FACEBOOK
+  YELP
+  BBB
+  ANGIE_LIST
+  HOME_ADVISOR
+  INTERNAL
+}
+
+model SafetyCertificationTracking {
+  id                String           @id @default(cuid())
+  
+  // Certification Details
+  certificationType String           // "ISA_Arborist", "OSHA_10", "CPR_First_Aid"
+  certificationName String
+  issuingOrganization String
+  certificateNumber String?
+  
+  // Validity
+  issueDate         DateTime
+  expirationDate    DateTime?
+  status            CertificationStatus @default(ACTIVE)
+  
+  // Verification
+  verificationStatus String          // "Pending", "Verified", "Failed"
+  verifiedBy        String?
+  verificationDate  DateTime?
+  verificationNotes String?
+  
+  // Documentation
+  certificateFile   String?
+  proofOfTraining   String[]
+  
+  // Renewal Tracking
+  renewalRequired   Boolean          @default(false)
+  renewalDeadline   DateTime?
+  renewalReminders  Json?            // Reminder schedule
+  
+  // Impact
+  trustScoreImpact  Decimal?         // How much this affects trust score
+  isPubliclyDisplayed Boolean        @default(false)
+  
+  // Relations
+  holderId          String
+  holder            User             @relation("CertificationHolder", fields: [holderId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("safety_certification_tracking")
+}
+
+model TrustScore {
+  id                String           @id @default(cuid())
+  
+  // Score Details
+  overallScore      Decimal          // 0-100
+  safetyScore       Decimal?         // 0-100
+  reliabilityScore  Decimal?         // 0-100
+  qualityScore      Decimal?         // 0-100
+  communicationScore Decimal?        // 0-100
+  
+  // Score Components
+  certificationScore Decimal?        // Based on certifications
+  reviewScore       Decimal?         // Based on customer reviews
+  experienceScore   Decimal?         // Based on years/jobs completed
+  verificationScore Decimal?         // Based on verification status
+  
+  // Calculation Details
+  lastCalculatedAt  DateTime
+  calculationMethod String?
+  scoringFactors    Json?            // Weights and factors used
+  
+  // Historical Tracking
+  previousScore     Decimal?
+  scoreChange       Decimal?         // Change from previous calculation
+  scoreChangeDate   DateTime?
+  
+  // Display Settings
+  isPubliclyVisible Boolean          @default(true)
+  scoreBadgeUrl     String?          // URL to trust badge image
+  
+  // Relations
+  userId            String           @unique
+  user              User             @relation("TrustScore", fields: [userId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("trust_scores")
+}
+
+model OnlineReview {
+  id                String           @id @default(cuid())
+  
+  // Review Details
+  rating            Decimal          // 1-5 stars (can be fractional)
+  title             String?
+  content           String
+  source            ReviewSource
+  
+  // Source Details
+  sourceUrl         String?
+  sourceReviewId    String?          // External review ID
+  reviewerName      String?
+  reviewerProfile   String?          // URL to reviewer profile
+  
+  // Sentiment Analysis
+  sentimentScore    Decimal?         // -1 to 1
+  sentimentLabel    String?          // "Positive", "Negative", "Neutral"
+  keywords          String[]         // Extracted keywords
+  
+  // Response
+  hasResponse       Boolean          @default(false)
+  responseText      String?
+  responseDate      DateTime?
+  respondedBy       String?
+  
+  // Verification
+  isVerified        Boolean          @default(false)
+  verificationMethod String?         // "Email", "Phone", "Purchase_Verified"
+  
+  // Impact
+  trustScoreImpact  Decimal?
+  isFeaturedin      Boolean          @default(false)
+  isPromoted        Boolean          @default(false)
+  
+  // Moderation
+  isFlagged         Boolean          @default(false)
+  flagReason        String?
+  moderationNotes   String?
+  
+  // Relations
+  businessId        String
+  business          User             @relation("BusinessReviews", fields: [businessId], references: [id])
+  jobId             String?
+  job               Job?             @relation("JobReviews", fields: [jobId], references: [id])
+  
+  // Timestamps
+  reviewDate        DateTime
+  firstDetected     DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("online_reviews")
+}
+
+model CrisisManagement {
+  id                String           @id @default(cuid())
+  
+  // Crisis Details
+  crisisType        String           // "Safety_Incident", "PR_Issue", "Legal_Issue", "Service_Failure"
+  severity          String           // "Low", "Medium", "High", "Critical"
+  title             String
+  description       String
+  
+  // Status
+  status            String           // "Active", "Monitoring", "Resolved", "Escalated"
+  priority          String           // "Low", "Medium", "High", "Critical"
+  
+  // Impact Assessment
+  reputationImpact  String?          // "Minimal", "Moderate", "Significant", "Severe"
+  businessImpact    String?          // Financial impact level
+  publicVisibility  String?          // "Internal", "Local", "Regional", "National"
+  
+  // Response Plan
+  responseStrategy  String?
+  keyMessages       String[]
+  approvedSpokesperson String?
+  
+  // Communication
+  internalCommunication String?
+  externalCommunication String?
+  mediaResponse     String?
+  socialMediaResponse String?
+  
+  // Timeline
+  crisisStartTime   DateTime
+  responseTime      Int?             // Minutes to first response
+  resolutionTime    Int?             // Hours to resolution
+  
+  // Stakeholders
+  affectedParties   String[]
+  notifiedParties   String[]
+  
+  // Action Items
+  immediateActions  String[]
+  shortTermActions  String[]
+  longTermActions   String[]
+  preventionMeasures String[]
+  
+  // Monitoring
+  monitoringKeywords String[]
+  alertsSetup       Boolean          @default(false)
+  
+  // Recovery
+  recoveryActions   String[]
+  brandRepairEfforts String[]
+  followUpRequired  Boolean          @default(false)
+  
+  // Relations
+  assignedToId      String?
+  assignedTo        User?            @relation("CrisisManager", fields: [assignedToId], references: [id])
+  relatedJobId      String?
+  relatedJob        Job?             @relation("CrisisJob", fields: [relatedJobId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  resolvedAt        DateTime?
+  
+  @@map("crisis_management")
+}
+
+model ReputationMonitoring {
+  id                String           @id @default(cuid())
+  
+  // Monitoring Details
+  monitoringType    String           // "Brand_Mention", "Review_Monitoring", "Social_Media"
+  keywords          String[]         // Keywords being monitored
+  sources           String[]         // Platforms being monitored
+  
+  // Alert Configuration
+  alertThreshold    Decimal?         // Sentiment threshold for alerts
+  alertEnabled      Boolean          @default(true)
+  alertRecipients   String[]         // User IDs to notify
+  
+  // Findings
+  mentionCount      Int              @default(0)
+  positiveMentions  Int              @default(0)
+  negativeMentions  Int              @default(0)
+  neutralMentions   Int              @default(0)
+  averageSentiment  Decimal?         // -1 to 1
+  
+  // Performance
+  lastScanAt        DateTime?
+  scanFrequency     String           // "Real_Time", "Hourly", "Daily"
+  
+  // Relations
+  mentions          BrandMention[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("reputation_monitoring")
+}
+
+model BrandMention {
+  id                String           @id @default(cuid())
+  
+  // Mention Details
+  source            String           // Platform/website where mentioned
+  url               String?
+  title             String?
+  content           String
+  author            String?
+  
+  // Analysis
+  sentiment         String           // "Positive", "Negative", "Neutral"
+  sentimentScore    Decimal?         // -1 to 1
+  relevanceScore    Decimal?         // 0-1
+  influenceScore    Decimal?         // 0-1 based on source authority
+  
+  // Reach
+  estimatedReach    Int?             // Estimated audience size
+  engagementCount   Int?             // Likes, shares, comments
+  
+  // Response
+  requiresResponse  Boolean          @default(false)
+  hasResponded      Boolean          @default(false)
+  responseText      String?
+  respondedBy       String?
+  responseDate      DateTime?
+  
+  // Classification
+  isCustomerFeedback Boolean         @default(false)
+  isCompetitorMention Boolean        @default(false)
+  isMediaCoverage   Boolean          @default(false)
+  
+  // Relations
+  monitoringId      String
+  monitoring        ReputationMonitoring @relation(fields: [monitoringId], references: [id])
+  
+  // Timestamps
+  mentionDate       DateTime
+  discoveredAt      DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  
+  @@map("brand_mentions")
+}
+
+// ============================================================================
+// 9. CUSTOMER ACQUISITION & GROWTH ANALYTICS
+// ============================================================================
+
+enum MarketingChannel {
+  GOOGLE_ADS
+  FACEBOOK_ADS
+  SEO_ORGANIC
+  REFERRAL
+  EMAIL_MARKETING
+  CONTENT_MARKETING
+  SOCIAL_MEDIA
+  DIRECT_MAIL
+  WORD_OF_MOUTH
+  PARTNERSHIPS
+  OTHER
+}
+
+enum CustomerStage {
+  PROSPECT
+  LEAD
+  QUALIFIED_LEAD
+  OPPORTUNITY
+  CUSTOMER
+  REPEAT_CUSTOMER
+  ADVOCATE
+  CHURNED
+}
+
+model CustomerAcquisition {
+  id                String           @id @default(cuid())
+  
+  // Customer Details
+  customerId        String           @unique
+  customer          User             @relation("AcquisitionCustomer", fields: [customerId], references: [id])
+  
+  // Acquisition Details
+  acquisitionChannel MarketingChannel
+  acquisitionSource String?          // Specific source within channel
+  acquisitionCampaign String?        // Campaign name/ID
+  
+  // Cost Details
+  acquisitionCost   Decimal          @default(0)
+  clickCost         Decimal?         // Cost per click if applicable
+  impressionCost    Decimal?         // Cost per impression
+  
+  // Timeline
+  firstTouchDate    DateTime         // First interaction
+  acquisitionDate   DateTime         // When they became a customer
+  timeTocustomer    Int?             // Days from first touch to customer
+  
+  // Value Tracking
+  firstPurchaseValue Decimal?
+  totalLifetimeValue Decimal         @default(0)
+  predictedLtv      Decimal?
+  
+  // Attribution
+  touchPoints       Json?            // All marketing touchpoints
+  lastTouchChannel  MarketingChannel?
+  assistingChannels String[]
+  
+  // Conversion Details
+  conversionValue   Decimal?
+  conversionRate    Decimal?
+  
+  // Relations
+  marketingCampaignId String?
+  marketingCampaign MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("customer_acquisition")
+}
+
+model MarketingCampaign {
+  id                String           @id @default(cuid())
+  
+  // Campaign Details
+  name              String
+  type              String           // "Awareness", "Lead_Generation", "Conversion", "Retention"
+  channel           MarketingChannel
+  status            String           // "Planning", "Active", "Paused", "Completed", "Cancelled"
+  
+  // Budget & Spend
+  budget            Decimal?
+  actualSpend       Decimal          @default(0)
+  budgetRemaining   Decimal?
+  
+  // Timeline
+  startDate         DateTime
+  endDate           DateTime?
+  duration          Int?             // days
+  
+  // Targeting
+  targetAudience    Json?            // Audience criteria
+  targetGeography   String[]         // Geographic targeting
+  
+  // Creative Assets
+  adCreatives       String[]         // URLs to ad images/videos
+  adCopy            String[]         // Ad text variations
+  landingPages      String[]         // Landing page URLs
+  
+  // Performance Metrics
+  impressions       Int              @default(0)
+  clicks            Int              @default(0)
+  conversions       Int              @default(0)
+  leads             Int              @default(0)
+  customers         Int              @default(0)
+  
+  // Calculated Metrics
+  clickThroughRate  Decimal?         // percentage
+  conversionRate    Decimal?         // percentage
+  costPerClick      Decimal?
+  costPerLead       Decimal?
+  costPerAcquisition Decimal?
+  returnOnAdSpend   Decimal?         // percentage
+  
+  // A/B Testing
+  isAbTest          Boolean          @default(false)
+  testVariations    Json?            // Test variations data
+  winningVariation  String?
+  
+  // Relations
+  acquisitions      CustomerAcquisition[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("marketing_campaigns")
+}
+
+model CustomerLifetimeValue {
+  id                String           @id @default(cuid())
+  
+  // Customer Details
+  customerId        String           @unique
+  customer          User             @relation("CustomerLTV", fields: [customerId], references: [id])
+  
+  // LTV Calculation
+  currentLtv        Decimal          @default(0)
+  predictedLtv      Decimal?
+  ltv12Month        Decimal?         // 12-month LTV
+  ltv24Month        Decimal?         // 24-month LTV
+  
+  // Purchase Behavior
+  totalOrders       Int              @default(0)
+  totalSpent        Decimal          @default(0)
+  averageOrderValue Decimal?
+  
+  // Frequency Metrics
+  purchaseFrequency Decimal?         // Orders per time period
+  daysBetweenOrders Decimal?         // Average days between orders
+  lastPurchaseDate  DateTime?
+  
+  // Retention Metrics
+  monthsActive      Int              @default(0)
+  retentionRate     Decimal?         // percentage
+  churnProbability  Decimal?         // 0-1 probability of churning
+  
+  // Segmentation
+  customerSegment   String?          // "High_Value", "Medium_Value", "Low_Value"
+  riskLevel         String?          // "Low", "Medium", "High" churn risk
+  
+  // Profitability
+  grossMargin       Decimal?         // percentage
+  serviceCosts      Decimal?         // Cost to serve this customer
+  netLtv            Decimal?         // LTV minus service costs
+  
+  // Predictive Factors
+  engagementScore   Decimal?         // 0-100
+  satisfactionScore Decimal?         // 0-5
+  referralCount     Int              @default(0)
+  
+  // Last Calculation
+  lastCalculatedAt  DateTime         @default(now())
+  calculationMethod String?          // "Historical", "Predictive", "Cohort"
+  
+  // Timestamps
+  customerSince     DateTime
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("customer_lifetime_value")
+}
+
+model ViralGrowthMetrics {
+  id                String           @id @default(cuid())
+  
+  // Period
+  period            String           // "Daily", "Weekly", "Monthly"
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Viral Metrics
+  viralCoefficient  Decimal          @default(0) // k-factor
+  invitesSent       Int              @default(0)
+  invitesAccepted   Int              @default(0)
+  invitationRate    Decimal?         // percentage of users who invite
+  acceptanceRate    Decimal?         // percentage of invites accepted
+  
+  // Referral Program
+  referralsSent     Int              @default(0)
+  referralsConverted Int             @default(0)
+  referralConversionRate Decimal?    // percentage
+  referralValue     Decimal          @default(0)
+  
+  // Network Effects
+  shareCount        Int              @default(0)
+  socialShares      Json?            // Shares by platform
+  organicMentions   Int              @default(0)
+  userGeneratedContent Int           @default(0)
+  
+  // Growth Loops
+  activationToShare Decimal?         // percentage of activated users who share
+  shareToSignup     Decimal?         // percentage of shares that result in signups
+  signupToActivation Decimal?        // percentage of signups who activate
+  
+  // Amplification
+  amplificationFactor Decimal?       // Average shares per user
+  reachMultiplier   Decimal?         // Reach expansion factor
+  
+  // Attribution
+  organicSignups    Int              @default(0)
+  referredSignups   Int              @default(0)
+  viralityPercentage Decimal?        // percentage of growth that's viral
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("viral_growth_metrics")
+}
+
+model ReferralProgram {
+  id                String           @id @default(cuid())
+  
+  // Program Details
+  programName       String           @unique
+  programType       String           // "Customer_Referral", "Professional_Referral", "Partnership"
+  status            String           // "Active", "Paused", "Ended"
+  
+  // Reward Structure
+  referrerReward    Decimal?         // Reward for person making referral
+  refereeReward     Decimal?         // Reward for person being referred
+  rewardType        String           // "Cash", "Credit", "Discount", "Service"
+  
+  // Eligibility
+  eligibilityCriteria Json?          // Who can participate
+  minimumPurchase   Decimal?         // Minimum purchase to qualify
+  
+  // Tracking
+  totalReferrals    Int              @default(0)
+  successfulReferrals Int            @default(0)
+  totalRewards      Decimal          @default(0)
+  rewardsPaid       Decimal          @default(0)
+  
+  // Performance
+  conversionRate    Decimal?         // percentage
+  averageReferralValue Decimal?
+  programROI        Decimal?         // percentage
+  
+  // Configuration
+  trackingMethod    String?          // "Unique_Link", "Referral_Code", "Email"
+  autoReward        Boolean          @default(true)
+  rewardDelay       Int?             // Days delay before reward
+  
+  // Relations
+  referrals         ReferralTracking[]
+  
+  // Timeline
+  startDate         DateTime
+  endDate           DateTime?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("referral_programs")
+}
+
+model ReferralTracking {
+  id                String           @id @default(cuid())
+  
+  // Referral Details
+  referralCode      String?          @unique
+  referralLink      String?
+  
+  // Parties
+  referrerId        String
+  referrer          User             @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId         String?
+  referee           User?            @relation("Referee", fields: [refereeId], references: [id])
+  refereeEmail      String?          // For tracking before they sign up
+  
+  // Status
+  status            String           // "Pending", "Completed", "Rewarded", "Expired"
+  conversionDate    DateTime?
+  
+  // Value
+  referralValue     Decimal?         // Value of the referred customer
+  referrerReward    Decimal?         // Actual reward given to referrer
+  refereeReward     Decimal?         // Actual reward given to referee
+  
+  // Tracking
+  clickCount        Int              @default(0)
+  firstClickDate    DateTime?
+  signupDate        DateTime?
+  
+  // Relations
+  programId         String
+  program           ReferralProgram  @relation(fields: [programId], references: [id])
+  jobId             String?
+  job               Job?             @relation("ReferredJob", fields: [jobId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("referral_tracking")
+}
+
+model GrowthExperiment {
+  id                String           @id @default(cuid())
+  
+  // Experiment Details
+  name              String
+  hypothesis        String
+  description       String
+  type              String           // "A/B_Test", "Multivariate", "Feature_Flag"
+  
+  // Status
+  status            String           // "Planning", "Running", "Paused", "Completed", "Cancelled"
+  
+  // Configuration
+  variants          Json             // Experiment variants
+  trafficAllocation Json             // Traffic split between variants
+  successMetrics    String[]         // Primary and secondary metrics
+  
+  // Timeline
+  plannedStartDate  DateTime
+  plannedEndDate    DateTime
+  actualStartDate   DateTime?
+  actualEndDate     DateTime?
+  minimumRunTime    Int?             // Minimum days to run
+  
+  // Targeting
+  targetAudience    Json?            // Audience criteria
+  sampleSize        Int?             // Required sample size
+  
+  // Results
+  confidenceLevel   Decimal?         // percentage
+  statisticalSignificance Boolean   @default(false)
+  winningVariant    String?
+  liftPercent       Decimal?         // Percentage improvement
+  
+  // Implementation
+  implementationDetails Json?
+  rolloutPlan       String?
+  rollbackPlan      String?
+  
+  // Learning
+  keyLearnings      String[]
+  recommendations   String[]
+  nextSteps         String[]
+  
+  // Relations
+  results           ExperimentResult[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("growth_experiments")
+}
+
+model ExperimentResult {
+  id                String           @id @default(cuid())
+  
+  // Result Details
+  variant           String           // Which variant this result is for
+  metric            String           // Which metric this measures
+  value             Decimal          // Metric value
+  
+  // Statistical Data
+  sampleSize        Int              // Number of users in this variant
+  conversionRate    Decimal?         // percentage
+  confidenceInterval Json?           // Statistical confidence interval
+  
+  // Comparison
+  baselineValue     Decimal?         // Control group value
+  absoluteLift      Decimal?         // Absolute difference
+  relativeLift      Decimal?         // Percentage difference
+  
+  // Significance
+  pValue            Decimal?         // Statistical p-value
+  isSignificant     Boolean          @default(false)
+  
+  // Relations
+  experimentId      String
+  experiment        GrowthExperiment @relation(fields: [experimentId], references: [id])
+  
+  // Timing
+  measurementDate   DateTime         @default(now())
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@map("experiment_results")
+}
+
+// ============================================================================
+// 10. LEGAL & SAFETY INFRASTRUCTURE
+// ============================================================================
+
+enum ContractType {
+  SERVICE_AGREEMENT
+  EMPLOYMENT_CONTRACT
+  NON_DISCLOSURE_AGREEMENT
+  VENDOR_AGREEMENT
+  INSURANCE_POLICY
+  LEASE_AGREEMENT
+  PARTNERSHIP_AGREEMENT
+  LICENSING_AGREEMENT
+}
+
+enum LegalContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  PENDING_SIGNATURE
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  DISPUTED
+}
+
+enum IncidentSeverity {
+  MINOR
+  MODERATE
+  SERIOUS
+  CRITICAL
+  CATASTROPHIC
+}
+
+enum IncidentType {
+  WORKPLACE_INJURY
+  PROPERTY_DAMAGE
+  EQUIPMENT_FAILURE
+  SAFETY_VIOLATION
+  ENVIRONMENTAL_INCIDENT
+  VEHICLE_ACCIDENT
+  CUSTOMER_INJURY
+  NEAR_MISS
+}
+
+model LegalContract {
+  id                String           @id @default(cuid())
+  
+  // Contract Details
+  title             String
+  contractType      ContractType
+  status            LegalContractStatus   @default(DRAFT)
+  contractNumber    String?          @unique
+  
+  // Parties
+  ourParty          String           // Our legal entity name
+  counterPartyName  String
+  counterPartyType  String?          // "Individual", "Corporation", "LLC"
+  counterPartyContact String?
+  
+  // Financial Terms
+  contractValue     Decimal?
+  paymentTerms      String?
+  currency          String           @default("USD")
+  
+  // Timeline
+  effectiveDate     DateTime?
+  expirationDate    DateTime?
+  renewalDate       DateTime?
+  noticePeriod      Int?             // Days required for termination notice
+  
+  // Documents
+  documentUrl       String?          // Main contract document
+  amendments        String[]         // Amendment documents
+  exhibits          String[]         // Supporting documents
+  
+  // E-Signature
+  signatureStatus   String?          // "Pending", "Partially_Signed", "Fully_Signed"
+  signatories       Json?            // Signature tracking
+  eSignatureProvider String?         // "DocuSign", "HelloSign", etc.
+  
+  // Legal Review
+  legalReviewStatus String?          // "Pending", "Approved", "Needs_Changes"
+  reviewedBy        String?
+  reviewNotes       String?
+  riskLevel         String?          // "Low", "Medium", "High"
+  
+  // Compliance
+  governingLaw      String?          // Jurisdiction
+  disputeResolution String?          // "Arbitration", "Mediation", "Court"
+  complianceRequirements String[]
+  
+  // Performance Tracking
+  performanceMetrics Json?
+  milestones        Json?
+  deliverables      String[]
+  
+  // Relations
+  relatedJobId      String?
+  relatedJob        Job?             @relation("ContractJob", fields: [relatedJobId], references: [id])
+  managedById       String?
+  managedBy         User?            @relation("ContractManager", fields: [managedById], references: [id])
+  
+  // Alerts & Reminders
+  renewalReminder   Boolean          @default(true)
+  expirationAlert   Boolean          @default(true)
+  autoRenewal       Boolean          @default(false)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  signedAt          DateTime?
+  
+  @@map("legal_contracts")
+}
+
+model SafetyIncident {
+  id                String           @id @default(cuid())
+  
+  // Incident Details
+  incidentNumber    String           @unique
+  title             String
+  description       String
+  type              IncidentType
+  severity          IncidentSeverity
+  
+  // Location & Time
+  incidentDate      DateTime
+  incidentTime      String?          // Time of day
+  location          String
+  address           String?
+  zipCode           String?
+  
+  // Weather Conditions
+  weatherConditions String?
+  temperature       Int?             // Fahrenheit
+  windSpeed         Int?             // mph
+  precipitation     String?
+  
+  // People Involved
+  injuredPartyId    String?
+  injuredParty      User?            @relation("IncidentInjured", fields: [injuredPartyId], references: [id])
+  injuredPartyName  String?          // If not a user
+  witnessNames      String[]
+  emergencyContacts String[]
+  
+  // Injury Details
+  injuryType        String?          // "Cut", "Bruise", "Fracture", "Burn"
+  bodyPartsAffected String[]
+  medicalAttention  Boolean          @default(false)
+  hospitalName      String?
+  treatingPhysician String?
+  
+  // Equipment Involved
+  equipmentInvolved String[]
+  equipmentFailure  Boolean          @default(false)
+  equipmentCondition String?
+  
+  // Root Cause Analysis
+  immediateCause    String?
+  underlyingCauses  String[]
+  contributingFactors String[]
+  humanFactors      String[]
+  environmentalFactors String[]
+  
+  // Investigation
+  investigatedBy    String?
+  investigator      User?            @relation("IncidentInvestigator", fields: [investigatedBy], references: [id])
+  investigationStatus String         @default("Pending") // "Pending", "In_Progress", "Completed"
+  investigationNotes String?
+  
+  // Documentation
+  photos            String[]         // URLs to incident photos
+  documents         String[]         // Reports, medical records, etc.
+  witnessStatements String[]
+  
+  // Regulatory Reporting
+  oshaReportable    Boolean          @default(false)
+  oshaReportNumber  String?
+  reportedToOsha    Boolean          @default(false)
+  reportDate        DateTime?
+  
+  // Insurance & Claims
+  insuranceClaim    Boolean          @default(false)
+  claimNumber       String?
+  insuranceNotified Boolean          @default(false)
+  estimatedCost     Decimal?
+  
+  // Corrective Actions
+  immediateActions  String[]         // Actions taken right away
+  correctiveActions String[]         // Long-term fixes
+  preventiveActions String[]         // Prevention measures
+  responsibleParty  String?
+  targetCompletionDate DateTime?
+  
+  // Status & Follow-up
+  status            String           // "Open", "Under_Investigation", "Resolved", "Closed"
+  followUpRequired  Boolean          @default(false)
+  followUpDate      DateTime?
+  
+  // Learning & Training
+  lessonsLearned    String[]
+  trainingRequired  Boolean          @default(false)
+  trainingTopics    String[]
+  
+  // Relations
+  jobId             String?
+  job               Job?             @relation("IncidentJob", fields: [jobId], references: [id])
+  reportedById      String
+  reportedBy        User             @relation("IncidentReporter", fields: [reportedById], references: [id])
+  
+  // Timestamps
+  reportedAt        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  closedAt          DateTime?
+  
+  @@map("safety_incidents")
+}
+
+model SafetyProtocol {
+  id                String           @id @default(cuid())
+  
+  // Protocol Details
+  title             String
+  description       String
+  protocolType      String           // "Work_Procedure", "Emergency_Response", "Equipment_Safety"
+  applicableWork    String[]         // Types of work this applies to
+  
+  // Requirements
+  requiredTraining  String[]
+  requiredEquipment String[]
+  requiredCertifications String[]
+  
+  // Steps
+  procedureSteps    Json             // Ordered list of steps
+  safetyChecks      Json             // Safety checkpoints
+  emergencyProcedures Json           // Emergency response steps
+  
+  // Risk Assessment
+  hazardsAddressed  String[]
+  riskLevel         String           // "Low", "Medium", "High"
+  riskMitigation    String[]
+  
+  // Compliance
+  regulatoryBasis   String[]         // OSHA standards, etc.
+  lastReviewed      DateTime?
+  reviewFrequency   String?          // "Annual", "Bi_Annual"
+  approvedBy        String?
+  
+  // Training
+  trainingRequired  Boolean          @default(true)
+  trainingMaterials String[]         // URLs to training content
+  testRequired      Boolean          @default(false)
+  passingScore      Int?             // Percentage
+  
+  // Version Control
+  version           String           @default("1.0")
+  changeLog         Json?            // History of changes
+  
+  // Status
+  isActive          Boolean          @default(true)
+  effectiveDate     DateTime         @default(now())
+  retirementDate    DateTime?
+  
+  // Relations
+  trainingRecords   ProtocolTraining[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("safety_protocols")
+}
+
+model ProtocolTraining {
+  id                String           @id @default(cuid())
+  
+  // Training Details
+  traineeId         String
+  trainee           User             @relation("ProtocolTrainee", fields: [traineeId], references: [id])
+  
+  // Completion Status
+  status            String           // "Enrolled", "In_Progress", "Completed", "Failed", "Expired"
+  completionDate    DateTime?
+  expirationDate    DateTime?
+  
+  // Assessment
+  testScore         Decimal?         // Percentage
+  passed            Boolean          @default(false)
+  attemptsCount     Int              @default(0)
+  
+  // Certification
+  certificateIssued Boolean          @default(false)
+  certificateUrl    String?
+  
+  // Relations
+  protocolId        String
+  protocol          SafetyProtocol   @relation(fields: [protocolId], references: [id])
+  
+  // Timestamps
+  enrolledAt        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@unique([traineeId, protocolId])
+  @@map("protocol_training")
+}
+
+model LegalCompliance {
+  id                String           @id @default(cuid())
+  
+  // Compliance Requirement
+  requirementName   String
+  regulatoryBody    String           // "OSHA", "DOL", "EPA", "State", "Local"
+  regulationType    String           // "Safety", "Environmental", "Labor", "Licensing"
+  
+  // Details
+  description       String
+  applicability     String           // Who/what this applies to
+  jurisdiction      String           // Geographic scope
+  
+  // Compliance Status
+  status            String           // "Compliant", "Non_Compliant", "Pending", "Unknown"
+  lastAuditDate     DateTime?
+  nextAuditDate     DateTime?
+  auditFrequency    String?          // "Annual", "Quarterly", etc.
+  
+  // Requirements
+  specificRequirements String[]
+  documentation     String[]         // Required documents
+  recordKeeping     String?          // Record keeping requirements
+  
+  // Evidence
+  complianceEvidence String[]        // URLs to evidence files
+  certifications    String[]         // Related certifications
+  permits           String[]         // Required permits
+  
+  // Violations & Penalties
+  violationHistory  Json?            // Past violations
+  potentialPenalties String[]
+  penaltyAmounts    Json?            // Fine amounts
+  
+  // Remediation
+  actionPlan        String?
+  responsibleParty  String?
+  targetDate        DateTime?
+  budgetAllocated   Decimal?
+  
+  // Monitoring
+  monitoringMethod  String?          // How compliance is monitored
+  alertsEnabled     Boolean          @default(true)
+  
+  // Relations
+  assignedToId      String?
+  assignedTo        User?            @relation("ComplianceManager", fields: [assignedToId], references: [id])
+  
+  // Timestamps
+  effectiveDate     DateTime
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("legal_compliance")
+}
+
+model InsuranceVerification {
+  id                String           @id @default(cuid())
+  
+  // Verification Details
+  verificationType  String           // "Automatic", "Manual", "Third_Party"
+  verificationStatus String          // "Pending", "Verified", "Failed", "Expired"
+  
+  // Insurance Details
+  policyNumber      String
+  insuranceCompany  String
+  policyType        String           // "General_Liability", "Workers_Comp", etc.
+  coverageAmount    Decimal
+  
+  // Validity
+  effectiveDate     DateTime
+  expirationDate    DateTime
+  isActive          Boolean          @default(true)
+  
+  // Verification Process
+  verificationMethod String?         // "API", "Document_Upload", "Phone"
+  verifiedBy        String?          // External service or user ID
+  verificationDate  DateTime?
+  
+  // Documentation
+  certificateUrl    String?          // Insurance certificate
+  policyDocumentUrl String?          // Full policy document
+  
+  // Alerts
+  expirationAlert   Boolean          @default(true)
+  alertDays         Int              @default(30) // Days before expiration
+  lastAlertSent     DateTime?
+  
+  // Relations
+  contractorId      String
+  contractor        User             @relation("InsuranceVerifications", fields: [contractorId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("insurance_verifications")
+}
+
+// ============================================================================
+// IMPLEMENTATION TIMELINE MANAGEMENT
+// ============================================================================
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  CANCELLED
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  URGENT
+}
+
+model ImplementationTimeline {
+  id                String           @id @default(cuid())
+  
+  // Timeline Details
+  timelineName      String           // "4-Week Action Plan", "Q1 Implementation"
+  description       String
+  totalDuration     Int              // Total days
+  
+  // Status
+  status            String           // "Planning", "Active", "Completed", "Paused"
+  progressPercentage Decimal         @default(0)
+  
+  // Timeline
+  startDate         DateTime
+  endDate           DateTime
+  actualStartDate   DateTime?
+  actualEndDate     DateTime?
+  
+  // Milestones
+  totalMilestones   Int              @default(0)
+  completedMilestones Int            @default(0)
+  
+  // Resources
+  budgetAllocated   Decimal?
+  budgetSpent       Decimal          @default(0)
+  teamSize          Int?
+  
+  // Performance
+  onSchedule        Boolean          @default(true)
+  onBudget          Boolean          @default(true)
+  riskLevel         String           @default("Low") // "Low", "Medium", "High"
+  
+  // Relations
+  tasks             ImplementationTask[]
+  milestones        TimelineMilestone[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("implementation_timelines")
+}
+
+model ImplementationTask {
+  id                String           @id @default(cuid())
+  
+  // Task Details
+  title             String
+  description       String
+  category          String           // "Legal", "Financial", "Operational", "Technical"
+  status            TaskStatus       @default(NOT_STARTED)
+  priority          TaskPriority     @default(MEDIUM)
+  
+  // Assignment
+  assignedToId      String?
+  assignedTo        User?            @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  assignedTeam      String[]         // Team member IDs
+  
+  // Timeline
+  plannedStartDate  DateTime
+  plannedEndDate    DateTime
+  actualStartDate   DateTime?
+  actualEndDate     DateTime?
+  estimatedHours    Int?
+  actualHours       Int?
+  
+  // Dependencies
+  dependencies      String[]         // Other task IDs
+  blockers          String[]         // What's blocking this task
+  
+  // Progress
+  progressPercentage Decimal         @default(0)
+  progressNotes     String[]
+  lastUpdateDate    DateTime?
+  
+  // Deliverables
+  deliverables      String[]         // Expected outputs
+  completionCriteria String[]        // How to know it's done
+  
+  // Budget
+  budgetAllocated   Decimal?
+  budgetSpent       Decimal          @default(0)
+  
+  // Quality Control
+  reviewRequired    Boolean          @default(false)
+  reviewedBy        String?
+  reviewStatus      String?          // "Pending", "Approved", "Needs_Changes"
+  
+  // Risk Management
+  riskLevel         String           @default("Low")
+  riskFactors       String[]
+  mitigationActions String[]
+  
+  // Relations
+  timelineId        String
+  timeline          ImplementationTimeline @relation(fields: [timelineId], references: [id])
+  milestoneId       String?
+  milestone         TimelineMilestone? @relation(fields: [milestoneId], references: [id])
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("implementation_tasks")
+}
+
+model TimelineMilestone {
+  id                String           @id @default(cuid())
+  
+  // Milestone Details
+  name              String
+  description       String
+  type              String           // "Phase_Completion", "Go_Live", "Review_Point", "Decision_Gate"
+  
+  // Status
+  status            String           // "Pending", "Achieved", "Missed", "Cancelled"
+  criticalPath      Boolean          @default(false)
+  
+  // Timeline
+  targetDate        DateTime
+  actualDate        DateTime?
+  
+  // Success Criteria
+  successCriteria   String[]
+  deliverables      String[]
+  acceptanceCriteria String[]
+  
+  // Achievement
+  achievementPercentage Decimal      @default(0)
+  qualityScore      Decimal?         // 0-100
+  
+  // Celebration
+  celebrationType   String?          // "Team_Meeting", "Company_Wide", "Client_Presentation"
+  celebrationPlanned Boolean         @default(false)
+  
+  // Relations
+  timelineId        String
+  timeline          ImplementationTimeline @relation(fields: [timelineId], references: [id])
+  tasks             ImplementationTask[]
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("timeline_milestones")
+}
+
+// ============================================================================
+// ENHANCED USER RELATIONS FOR NEW SYSTEMS
+// ============================================================================
+
+// Add missing relations to User model by extending it
+// These would be added to the existing User model relations section
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
